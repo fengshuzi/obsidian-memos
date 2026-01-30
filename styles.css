@@ -673,6 +673,11 @@
     .memos-quick-tags-select:focus {
         border-color: var(--memos-primary);
     }
+
+    /* 隐藏占位符选项（disabled 选项在下拉列表中不显示） */
+    .memos-quick-tags-select option[disabled] {
+        display: none;
+    }
 }
 
 @media (max-width: 500px) {
