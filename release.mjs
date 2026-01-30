@@ -39,31 +39,24 @@ if (!existsSync(mainJsPath)) {
 const manifestPath = existsSync('dist/manifest.json') ? 'dist/manifest.json' : 'manifest.json';
 const stylesPath = existsSync('dist/styles.css') ? 'dist/styles.css' : 'styles.css';
 
-// 检查是否需要强制模式
-const forceMode = process.argv.includes('--force');
-
-// 创建 git tag
+// 默认覆盖：若 tag/Release 已存在则先删除再创建
 console.log(`\n🏷️  创建 tag: ${tagName}`);
 try {
-    if (forceMode) {
-        // 删除本地和远程 tag
-        try {
-            execSync(`git tag -d ${tagName}`, { stdio: 'ignore' });
-        } catch { /* ignore */ }
-        try {
-            execSync(`git push origin :refs/tags/${tagName}`, { stdio: 'ignore' });
-        } catch { /* ignore */ }
-        // 删除 GitHub release
-        try {
-            execSync(`gh release delete ${tagName} --yes`, { stdio: 'ignore' });
-        } catch { /* ignore */ }
-    }
+    try {
+        execSync(`git tag -d ${tagName}`, { stdio: 'ignore' });
+        console.log(`   已删除本地 tag ${tagName}`);
+    } catch { /* ignore */ }
+    try {
+        execSync(`git push origin :refs/tags/${tagName}`, { stdio: 'ignore' });
+        console.log(`   已删除远程 tag ${tagName}`);
+    } catch { /* ignore */ }
+    try {
+        execSync(`gh release delete ${tagName} --yes`, { stdio: 'ignore' });
+        console.log(`   已删除 GitHub Release ${tagName}`);
+    } catch { /* ignore */ }
+
     execSync(`git tag -a ${tagName} -m "Release ${version}"`, { stdio: 'inherit' });
 } catch (error) {
-    if (!forceMode && error.message?.includes('already exists')) {
-        console.log(`\n⚠️  Tag ${tagName} 已存在。使用 --force 覆盖。`);
-        process.exit(1);
-    }
     throw error;
 }
 
