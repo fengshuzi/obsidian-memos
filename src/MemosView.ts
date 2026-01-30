@@ -239,7 +239,7 @@ export class MemosView extends ItemView {
             const dropdownWrap = inputArea.createDiv({ cls: 'memos-quick-tags-dropdown' });
             const select = dropdownWrap.createEl('select', { cls: 'memos-quick-tags-select' });
             this.quickTagsSelect = select;
-            select.createEl('option', { value: '', text: '全部' });
+            select.createEl('option', { value: '', text: '选择标签' });
             for (const tag of quickTags) {
                 select.createEl('option', { value: tag.keyword, text: tag.label });
             }
