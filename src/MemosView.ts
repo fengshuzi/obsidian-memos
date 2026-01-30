@@ -235,22 +235,24 @@ export class MemosView extends ItemView {
                 });
             }
 
-            // 手机端：标签下拉（小屏时 CSS 显示、按钮隐藏，不包含"全部"选项）
+            // 手机端：标签下拉（小屏时 CSS 显示、按钮隐藏，包含"全部"选项）
             const dropdownWrap = inputArea.createDiv({ cls: 'memos-quick-tags-dropdown' });
             const select = dropdownWrap.createEl('select', { cls: 'memos-quick-tags-select' });
             this.quickTagsSelect = select;
-            // 添加占位符选项（value=''，disabled，仅用于初始显示，下拉列表中不显示）
-            const placeholderOption = select.createEl('option', { value: '', text: '选择标签' });
-            placeholderOption.setAttribute('disabled', 'true');
-            placeholderOption.setAttribute('selected', 'true');
-            // 只添加配置的标签（下拉列表中只显示这些）
-            for (const tag of quickTags) {
-                select.createEl('option', { value: tag.keyword, text: tag.label });
+            // 手机端：添加"全部"选项和配置的标签
+            if (quickTags.length > 0) {
+                // 添加"全部"选项（显示全部内容）
+                const allOption = select.createEl('option', { value: '', text: '全部' });
+                allOption.setAttribute('selected', 'true');
+                // 添加配置的标签
+                for (const tag of quickTags) {
+                    select.createEl('option', { value: tag.keyword, text: tag.label });
+                }
             }
             select.addEventListener('change', async () => {
                 const value = select.value;
                 if (!value) {
-                    // 占位符选项被选中（理论上不会发生，因为 disabled），显示全部
+                    // 选择了"全部"选项，清除所有筛选条件，显示全部内容
                     this.currentTag = '';
                     this.currentQuickTag = null;
                     this.currentFilter.tag = undefined;

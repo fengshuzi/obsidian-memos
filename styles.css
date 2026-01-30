@@ -637,10 +637,21 @@
         display: none !important;
     }
 
+    .memos-tag-filter {
+        display: none !important;
+    }
+
+    .memos-tag-select {
+        display: none !important;
+    }
+
     .memos-inline-input {
-        min-height: 40px;
-        max-height: 40px;
-        resize: none;
+        min-height: 40px !important;
+        max-height: 40px !important;
+        height: 40px !important;
+        resize: none !important;
+        overflow: hidden !important;
+        line-height: 1.5;
     }
 
     .memos-inline-quick-tags {
@@ -674,9 +685,10 @@
         border-color: var(--memos-primary);
     }
 
-    /* 隐藏占位符选项（disabled 选项在下拉列表中不显示） */
-    .memos-quick-tags-select option[disabled] {
-        display: none;
+    /* 隐藏 disabled 和 hidden 选项（在下拉列表中不显示） */
+    .memos-quick-tags-select option[disabled],
+    .memos-quick-tags-select option[hidden] {
+        display: none !important;
     }
 }
 
@@ -686,11 +698,11 @@
     }
 
     .memos-tag-filter {
-        width: 100%;
+        display: none !important;
     }
 
     .memos-tag-select {
-        width: 100%;
+        display: none !important;
     }
 
     .memos-input-hints {
