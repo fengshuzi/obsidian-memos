@@ -24,6 +24,8 @@ export class MemosView extends ItemView {
     private currentTag: string = '';
     private currentQuickTag: QuickTag | null = null; // 当前选中的快捷标签（含多关键词）
     private editingMemo: MemoItem | null = null; // 正在编辑的闪念
+    /** 手机端快捷标签下拉（小屏时显示，与按钮二选一） */
+    private quickTagsSelect: HTMLSelectElement | null = null;
 
     constructor(
         leaf: WorkspaceLeaf, 
@@ -106,10 +108,10 @@ export class MemosView extends ItemView {
         // 输入区域
         this.createInputArea(container);
 
-        // 工具栏：搜索和筛选
+        // 工具栏：搜索和筛选（手机端隐藏搜索框）
         const toolbar = container.createDiv({ cls: 'memos-toolbar' });
 
-        // 搜索框
+        // 搜索框（小屏时隐藏）
         const searchContainer = toolbar.createDiv({ cls: 'memos-search-container' });
         const searchInput = searchContainer.createEl('input', {
             cls: 'memos-search-input',
@@ -162,12 +164,13 @@ export class MemosView extends ItemView {
             this.submitInlineInput();
         });
 
-        // 自动调整高度
+        // 自动调整高度（手机端单行不扩展，由 CSS 控制）
         this.inputTextArea.addEventListener('input', () => {
-            if (this.inputTextArea) {
-                this.inputTextArea.style.height = 'auto';
-                this.inputTextArea.style.height = Math.min(this.inputTextArea.scrollHeight, 150) + 'px';
-            }
+            if (!this.inputTextArea) return;
+            const isMobile = window.matchMedia('(max-width: 768px)').matches;
+            if (isMobile) return;
+            this.inputTextArea.style.height = 'auto';
+            this.inputTextArea.style.height = Math.min(this.inputTextArea.scrollHeight, 150) + 'px';
         });
 
         // 快捷键处理
@@ -181,11 +184,17 @@ export class MemosView extends ItemView {
             return true;
         };
 
-        // 快捷标签区域
+        // 快捷标签区域（桌面：按钮；手机端由 CSS 隐藏按钮、显示下拉）
         const quickTags = parseQuickTags(this.settings.quickTags);
         if (quickTags.length > 0) {
             const quickTagsContainer = inputArea.createDiv({ cls: 'memos-inline-quick-tags' });
-            
+
+            const syncQuickTagsSelect = () => {
+                if (this.quickTagsSelect) {
+                    this.quickTagsSelect.value = this.currentTag || '';
+                }
+            };
+
             // "全部"按钮
             const allBtn = quickTagsContainer.createEl('button', {
                 cls: 'memos-quick-tag memos-quick-tag-all is-active',
@@ -200,6 +209,7 @@ export class MemosView extends ItemView {
                     btn.removeClass('is-active');
                 });
                 allBtn.addClass('is-active');
+                syncQuickTagsSelect();
                 await this.loadMemos();
             });
 
@@ -210,19 +220,56 @@ export class MemosView extends ItemView {
                     text: tag.label
                 });
                 tagBtn.setAttribute('data-keyword', tag.keyword);
-                
+
                 tagBtn.addEventListener('click', async () => {
                     this.currentTag = tag.keyword;
-                    this.currentQuickTag = tag; // 保存完整的 QuickTag 对象
+                    this.currentQuickTag = tag;
                     this.currentFilter.tag = tag.keyword;
-                    this.currentFilter.filterTags = tag.keywords; // 支持多关键词筛选
+                    this.currentFilter.filterTags = tag.keywords;
                     quickTagsContainer.querySelectorAll('.memos-quick-tag').forEach(btn => {
                         btn.removeClass('is-active');
                     });
                     tagBtn.addClass('is-active');
+                    syncQuickTagsSelect();
                     await this.loadMemos();
                 });
             }
+
+            // 手机端：标签下拉（小屏时 CSS 显示、按钮隐藏）
+            const dropdownWrap = inputArea.createDiv({ cls: 'memos-quick-tags-dropdown' });
+            const select = dropdownWrap.createEl('select', { cls: 'memos-quick-tags-select' });
+            this.quickTagsSelect = select;
+            select.createEl('option', { value: '', text: '全部' });
+            for (const tag of quickTags) {
+                select.createEl('option', { value: tag.keyword, text: tag.label });
+            }
+            select.addEventListener('change', async () => {
+                const value = select.value;
+                if (!value) {
+                    this.currentTag = '';
+                    this.currentQuickTag = null;
+                    this.currentFilter.tag = undefined;
+                    this.currentFilter.filterTags = undefined;
+                    quickTagsContainer.querySelectorAll('.memos-quick-tag').forEach(btn => {
+                        btn.removeClass('is-active');
+                    });
+                    allBtn.addClass('is-active');
+                } else {
+                    const tag = quickTags.find(t => t.keyword === value);
+                    if (tag) {
+                        this.currentTag = tag.keyword;
+                        this.currentQuickTag = tag;
+                        this.currentFilter.tag = tag.keyword;
+                        this.currentFilter.filterTags = tag.keywords;
+                        quickTagsContainer.querySelectorAll('.memos-quick-tag').forEach(btn => {
+                            btn.removeClass('is-active');
+                            if (btn.getAttribute('data-keyword') === value) btn.addClass('is-active');
+                        });
+                        allBtn.removeClass('is-active');
+                    }
+                }
+                await this.loadMemos();
+            });
         }
     }
 

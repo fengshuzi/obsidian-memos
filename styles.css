@@ -630,22 +630,72 @@
 /* ============================================
    响应式调整
    ============================================ */
+
+/* 手机端 / 小屏（宽度 ≤768px）：隐藏搜索、输入框单行、标签改为下拉 */
+@media (max-width: 768px) {
+    .memos-search-container {
+        display: none !important;
+    }
+
+    .memos-inline-input {
+        min-height: 40px;
+        max-height: 40px;
+        resize: none;
+    }
+
+    .memos-inline-quick-tags {
+        display: none !important;
+    }
+
+    .memos-quick-tags-dropdown {
+        display: block !important;
+        margin-top: var(--memos-spacing-sm);
+    }
+
+    .memos-quick-tags-select {
+        width: 100%;
+        padding: var(--memos-spacing-sm) var(--memos-spacing);
+        border: 1px solid var(--memos-border);
+        border-radius: var(--memos-radius);
+        background: var(--background-primary);
+        font-size: 14px;
+        color: var(--text-normal);
+        cursor: pointer;
+        outline: none;
+        -webkit-appearance: none;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        padding-right: 32px;
+    }
+
+    .memos-quick-tags-select:focus {
+        border-color: var(--memos-primary);
+    }
+}
+
 @media (max-width: 500px) {
     .memos-toolbar {
         flex-direction: column;
     }
-    
+
     .memos-tag-filter {
         width: 100%;
     }
-    
+
     .memos-tag-select {
         width: 100%;
     }
-    
+
     .memos-input-hints {
         display: none;
     }
+}
+
+/* 桌面端：隐藏标签下拉，只显示按钮 */
+.memos-quick-tags-dropdown {
+    display: none;
 }
 
 
