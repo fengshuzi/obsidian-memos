@@ -491,14 +491,14 @@ export class MemosView extends ItemView {
         try {
             let memos: MemoItem[];
             
-            // 根据筛选条件获取数据
-            if (this.currentFilter.filterTags && this.currentFilter.filterTags.length > 0) {
+            // 根据筛选条件获取数据（搜索优先，有搜索词时忽略标签筛选）
+            if (this.currentFilter.search && this.currentFilter.search.trim()) {
+                memos = await this.storage.searchMemos(this.currentFilter.search.trim());
+            } else if (this.currentFilter.filterTags && this.currentFilter.filterTags.length > 0) {
                 // 多关键词筛选（支持标签分组）
                 memos = await this.storage.getMemosByTags(this.currentFilter.filterTags);
             } else if (this.currentFilter.tag) {
                 memos = await this.storage.getMemosByTag(this.currentFilter.tag);
-            } else if (this.currentFilter.search) {
-                memos = await this.storage.searchMemos(this.currentFilter.search);
             } else {
                 memos = await this.storage.getAllMemos();
             }
