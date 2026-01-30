@@ -1,0 +1,669 @@
+/**
+ * 闪念笔记插件样式
+ * 设计风格：简洁、现代、类似 Flomo 的卡片式布局
+ */
+
+/* ============================================
+   变量定义
+   ============================================ */
+:root {
+    --memos-primary: #10b981;
+    --memos-primary-hover: #059669;
+    --memos-primary-light: rgba(16, 185, 129, 0.1);
+    --memos-border: var(--background-modifier-border);
+    --memos-card-bg: var(--background-primary);
+    --memos-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --memos-card-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.15);
+    --memos-radius: 8px;
+    --memos-radius-sm: 4px;
+    --memos-spacing: 12px;
+    --memos-spacing-sm: 8px;
+    --memos-spacing-xs: 4px;
+}
+
+/* 深色模式调整 */
+.theme-dark {
+    --memos-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --memos-card-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* ============================================
+   视图容器
+   ============================================ */
+.memos-view-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* 主内容区域样式（居中显示，有最大宽度） */
+.memos-main-view {
+    max-width: 800px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 0 20px;
+    box-sizing: border-box;
+}
+
+/* ============================================
+   头部区域
+   ============================================ */
+.memos-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--memos-spacing) 0;
+    border-bottom: 1px solid var(--memos-border);
+    background: transparent;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--background-primary);
+}
+
+.memos-header-left {
+    display: flex;
+    flex-direction: column;
+    gap: var(--memos-spacing-xs);
+}
+
+.memos-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.memos-stats {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.memos-header-right {
+    display: flex;
+    gap: var(--memos-spacing-sm);
+}
+
+.memos-header-right button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: none;
+    border-radius: var(--memos-radius);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.memos-header-right button:hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.memos-new-btn {
+    background: var(--memos-primary) !important;
+    color: white !important;
+}
+
+.memos-new-btn:hover {
+    background: var(--memos-primary-hover) !important;
+}
+
+/* ============================================
+   内联输入区域
+   ============================================ */
+.memos-input-area {
+    padding: var(--memos-spacing) 0;
+    border-bottom: 1px solid var(--memos-border);
+}
+
+.memos-input-area.is-editing {
+    background: rgba(245, 158, 11, 0.05);
+    border-radius: var(--memos-radius);
+    padding: var(--memos-spacing);
+    margin: var(--memos-spacing) 0;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.memos-input-row {
+    display: flex;
+    gap: var(--memos-spacing-sm);
+    align-items: flex-end;
+}
+
+.memos-inline-input {
+    flex: 1;
+    min-height: 36px;
+    max-height: 150px;
+    padding: var(--memos-spacing-sm) var(--memos-spacing);
+    border: 1px solid var(--memos-border);
+    border-radius: var(--memos-radius);
+    background: var(--background-primary);
+    font-size: 14px;
+    line-height: 1.5;
+    resize: none;
+    outline: none;
+    transition: border-color 0.15s ease;
+    font-family: inherit;
+}
+
+.memos-inline-input:focus {
+    border-color: var(--memos-primary);
+}
+
+.memos-inline-input::placeholder {
+    color: var(--text-faint);
+}
+
+.memos-send-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: none;
+    border-radius: var(--memos-radius);
+    background: var(--memos-primary);
+    color: white;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    flex-shrink: 0;
+}
+
+.memos-send-btn:hover {
+    background: var(--memos-primary-hover);
+}
+
+.memos-inline-quick-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--memos-spacing-xs);
+    margin-top: var(--memos-spacing-sm);
+}
+
+.memos-edit-hint {
+    display: flex;
+    align-items: center;
+    gap: var(--memos-spacing-sm);
+    margin-top: var(--memos-spacing-sm);
+    font-size: 12px;
+    color: #f59e0b;
+}
+
+.memos-cancel-edit {
+    padding: 2px 8px;
+    font-size: 11px;
+    color: var(--text-muted);
+    background: transparent;
+    border: 1px solid var(--memos-border);
+    border-radius: var(--memos-radius-sm);
+    cursor: pointer;
+}
+
+.memos-cancel-edit:hover {
+    border-color: var(--text-muted);
+}
+
+/* ============================================
+   工具栏
+   ============================================ */
+.memos-toolbar {
+    display: flex;
+    gap: var(--memos-spacing-sm);
+    padding: var(--memos-spacing) 0;
+    border-bottom: 1px solid var(--memos-border);
+    background: transparent;
+}
+
+.memos-search-container {
+    flex: 1;
+}
+
+.memos-search-input {
+    width: 100%;
+    padding: var(--memos-spacing-sm) var(--memos-spacing);
+    border: 1px solid var(--memos-border);
+    border-radius: var(--memos-radius);
+    background: var(--background-primary);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+
+.memos-search-input:focus {
+    border-color: var(--memos-primary);
+}
+
+.memos-tag-filter {
+    flex-shrink: 0;
+}
+
+.memos-tag-select {
+    padding: var(--memos-spacing-sm) var(--memos-spacing);
+    border: 1px solid var(--memos-border);
+    border-radius: var(--memos-radius);
+    background: var(--background-primary);
+    font-size: 13px;
+    cursor: pointer;
+    outline: none;
+}
+
+.memos-tag-select:focus {
+    border-color: var(--memos-primary);
+}
+
+/* ============================================
+   内容区域
+   ============================================ */
+.memos-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--memos-spacing) 0;
+}
+
+.memos-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: var(--text-muted);
+}
+
+/* ============================================
+   日期分组标题
+   ============================================ */
+.memos-date-header {
+    padding: var(--memos-spacing) 0 var(--memos-spacing-sm);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--memos-border);
+    margin-bottom: var(--memos-spacing);
+}
+
+/* ============================================
+   闪念卡片
+   ============================================ */
+.memos-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--memos-spacing);
+}
+
+/* 卡片样式 */
+.memos-card {
+    position: relative;
+    padding: var(--memos-spacing);
+    background: var(--memos-card-bg);
+    border: 1px solid var(--memos-border);
+    border-radius: var(--memos-radius);
+    box-shadow: var(--memos-card-shadow);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.memos-card:hover {
+    border-color: var(--memos-primary);
+    box-shadow: var(--memos-card-shadow-hover);
+    transform: translateY(-1px);
+}
+
+.memos-card-more {
+    position: absolute;
+    right: var(--memos-spacing-sm);
+    top: var(--memos-spacing-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: none;
+    border-radius: var(--memos-radius-sm);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.15s ease;
+}
+
+.memos-card:hover .memos-card-more {
+    opacity: 1;
+}
+
+.memos-card-more:hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.memos-card-content {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-normal);
+    word-break: break-word;
+    padding-right: 24px;
+}
+
+.memos-card-content p {
+    margin: 0;
+}
+
+.memos-card-content p + p {
+    margin-top: var(--memos-spacing-sm);
+}
+
+/* 内容中的标签样式 */
+.memos-card-content a.tag {
+    color: var(--memos-primary);
+    text-decoration: none;
+}
+
+/* 卡片动画 */
+@keyframes memos-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.memos-card {
+    animation: memos-fade-in 0.2s ease;
+}
+
+
+/* ============================================
+   空状态
+   ============================================ */
+.memos-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+}
+
+.memos-empty-icon {
+    margin-bottom: var(--memos-spacing);
+    color: var(--text-faint);
+}
+
+.memos-empty-text {
+    margin-bottom: var(--memos-spacing);
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.memos-empty-btn {
+    padding: var(--memos-spacing-sm) var(--memos-spacing);
+    border: none;
+    border-radius: var(--memos-radius);
+    background: var(--memos-primary);
+    color: white;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.memos-empty-btn:hover {
+    background: var(--memos-primary-hover);
+}
+
+/* ============================================
+   加载更多
+   ============================================ */
+.memos-load-more {
+    display: flex;
+    justify-content: center;
+    padding: var(--memos-spacing);
+}
+
+.memos-load-more-btn {
+    padding: var(--memos-spacing-sm) 24px;
+    border: 1px solid var(--memos-border);
+    border-radius: var(--memos-radius);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.memos-load-more-btn:hover {
+    border-color: var(--memos-primary);
+    color: var(--memos-primary);
+}
+
+/* ============================================
+   输入弹窗
+   ============================================ */
+.memos-input-modal {
+    padding: 0 !important;
+}
+
+.memos-input-modal .modal-content {
+    padding: 0;
+}
+
+.memos-input-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--memos-spacing);
+    border-bottom: 1px solid var(--memos-border);
+}
+
+.memos-input-time {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--memos-primary);
+    font-family: var(--font-monospace);
+}
+
+.memos-edit-badge {
+    margin-left: var(--memos-spacing-sm);
+    padding: 2px 8px;
+    font-size: 11px;
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.1);
+    border-radius: 4px;
+}
+
+.memos-input-container {
+    padding: var(--memos-spacing);
+}
+
+.memos-input-textarea {
+    width: 100%;
+    min-height: 120px;
+    max-height: 300px;
+    padding: var(--memos-spacing);
+    border: 1px solid var(--memos-border);
+    border-radius: var(--memos-radius);
+    background: var(--background-primary);
+    font-size: 14px;
+    line-height: 1.6;
+    resize: none;
+    outline: none;
+    transition: border-color 0.15s ease;
+    font-family: inherit;
+}
+
+.memos-input-textarea:focus {
+    border-color: var(--memos-primary);
+}
+
+.memos-input-textarea::placeholder {
+    color: var(--text-faint);
+}
+
+.memos-input-tags {
+    display: flex;
+    align-items: center;
+    gap: var(--memos-spacing-sm);
+    padding: 0 var(--memos-spacing) var(--memos-spacing);
+}
+
+.memos-tag-label {
+    font-size: 13px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.memos-tag-input {
+    flex: 1;
+    padding: var(--memos-spacing-sm) var(--memos-spacing);
+    border: 1px solid var(--memos-border);
+    border-radius: var(--memos-radius);
+    background: var(--background-primary);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+
+.memos-tag-input:focus {
+    border-color: var(--memos-primary);
+}
+
+.memos-default-tags {
+    font-size: 11px;
+    color: var(--text-faint);
+    flex-shrink: 0;
+}
+
+/* 快捷标签区域 */
+.memos-quick-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--memos-spacing-xs);
+    padding: var(--memos-spacing-sm) var(--memos-spacing);
+    border-top: 1px solid var(--memos-border);
+    max-height: 80px;
+    overflow-y: auto;
+}
+
+.memos-quick-tag {
+    padding: 3px 10px;
+    font-size: 11px;
+    color: var(--text-muted);
+    background: transparent;
+    border: 1px solid var(--memos-border);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.memos-quick-tag:hover {
+    border-color: var(--memos-primary);
+    color: var(--memos-primary);
+}
+
+.memos-quick-tag.is-active {
+    background: var(--memos-primary);
+    border-color: var(--memos-primary);
+    color: white;
+}
+
+.memos-quick-tag-all {
+    font-weight: 500;
+}
+
+.memos-input-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--memos-spacing);
+    border-top: 1px solid var(--memos-border);
+    background: var(--background-secondary);
+}
+
+.memos-input-hints {
+    font-size: 11px;
+    color: var(--text-faint);
+}
+
+.memos-button-group {
+    display: flex;
+    gap: var(--memos-spacing-sm);
+}
+
+.memos-btn {
+    padding: var(--memos-spacing-sm) var(--memos-spacing);
+    border: none;
+    border-radius: var(--memos-radius);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.memos-btn-cancel {
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--memos-border);
+}
+
+.memos-btn-cancel:hover {
+    background: var(--background-modifier-hover);
+}
+
+.memos-btn-submit {
+    background: var(--memos-primary);
+    color: white;
+    min-width: 80px;
+}
+
+.memos-btn-submit:hover {
+    background: var(--memos-primary-hover);
+}
+
+/* ============================================
+   响应式调整
+   ============================================ */
+@media (max-width: 500px) {
+    .memos-toolbar {
+        flex-direction: column;
+    }
+    
+    .memos-tag-filter {
+        width: 100%;
+    }
+    
+    .memos-tag-select {
+        width: 100%;
+    }
+    
+    .memos-input-hints {
+        display: none;
+    }
+}
+
+
+/* ============================================
+   滚动条样式
+   ============================================ */
+.memos-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.memos-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.memos-content::-webkit-scrollbar-thumb {
+    background: var(--background-modifier-border);
+    border-radius: 3px;
+}
+
+.memos-content::-webkit-scrollbar-thumb:hover {
+    background: var(--text-faint);
+}
