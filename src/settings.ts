@@ -119,14 +119,46 @@ export class MemosSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('快捷标签')
-            .setDesc('输入框下方显示的常用标签按钮。格式：关键词|显示名，用逗号分隔。例如：idea|灵感,read|读书笔记,工作')
+            .setDesc('输入框下方显示的常用标签按钮。格式：关键词|显示名。多关键词分组用 + 连接：记账+消费+支出|记账（点击时筛选所有相关标签）')
             .addTextArea(text => text
-                .setPlaceholder('今天也要用心过生活,p1|重要且紧急,工作,健身')
+                .setPlaceholder('今天也要用心过生活,p1|重要且紧急,记账+消费+支出|记账,工作')
                 .setValue(this.plugin.settings.quickTags)
                 .onChange(async (value) => {
                     this.plugin.settings.quickTags = value;
                     await this.plugin.saveSettings();
                 }));
+
+        new Setting(containerEl)
+            .setName('智能关键词（记账识别）')
+            .setDesc('内容包含数字+关键词时自动添加标签。JSON格式：{"标签": ["关键词1", "关键词2"]}。例如输入「午餐10元」自动加 #cy')
+            .addTextArea(text => {
+                text.inputEl.style.width = '100%';
+                text.inputEl.style.height = '120px';
+                text.inputEl.style.fontFamily = 'monospace';
+                text
+                    .setPlaceholder('{"cy": ["餐", "吃", "午餐"], "gw": ["购", "买"]}')
+                    .setValue(this.plugin.settings.smartKeywords)
+                    .onChange(async (value) => {
+                        this.plugin.settings.smartKeywords = value;
+                        await this.plugin.saveSettings();
+                    });
+            });
+
+        new Setting(containerEl)
+            .setName('习惯打卡关键词')
+            .setDesc('内容包含关键词时自动添加标签（不需要数字）。JSON格式：{"标签": ["关键词1", "关键词2"]}。例如输入「深蹲50个」自动加 #sp')
+            .addTextArea(text => {
+                text.inputEl.style.width = '100%';
+                text.inputEl.style.height = '120px';
+                text.inputEl.style.fontFamily = 'monospace';
+                text
+                    .setPlaceholder('{"sp": ["运动", "深蹲", "哑铃"], "reading": ["阅读", "读书"]}')
+                    .setValue(this.plugin.settings.habitKeywords)
+                    .onChange(async (value) => {
+                        this.plugin.settings.habitKeywords = value;
+                        await this.plugin.saveSettings();
+                    });
+            });
 
         // 界面设置
         containerEl.createEl('h3', { text: '🎨 界面' });

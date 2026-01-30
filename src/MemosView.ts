@@ -6,7 +6,7 @@
 
 import { ItemView, WorkspaceLeaf, Menu, Notice, MarkdownRenderer } from 'obsidian';
 import { MemosStorage } from './storage';
-import { MemoItem, MemosPluginSettings, MEMOS_VIEW_TYPE, parseQuickTags } from './types';
+import { MemoItem, MemosPluginSettings, MEMOS_VIEW_TYPE, parseQuickTags, QuickTag, parseSmartKeywords, matchSmartKeyword, matchHabitKeyword } from './types';
 import { getFriendlyDateDisplay, debounce, truncateText } from './utils';
 import { MemoInputModal } from './InputModal';
 import type MemosPlugin from './main';
@@ -17,11 +17,12 @@ export class MemosView extends ItemView {
     private settings: MemosPluginSettings;
     private contentContainer: HTMLElement | null = null;
     private memosList: HTMLElement | null = null;
-    private currentFilter: { tag?: string; search?: string } = {};
+    private currentFilter: { tag?: string; filterTags?: string[]; search?: string } = {};
     private displayedMemos: MemoItem[] = [];
     private page: number = 1;
     private inputTextArea: HTMLTextAreaElement | null = null;
     private currentTag: string = '';
+    private currentQuickTag: QuickTag | null = null; // 当前选中的快捷标签（含多关键词）
     private editingMemo: MemoItem | null = null; // 正在编辑的闪念
 
     constructor(
@@ -192,7 +193,9 @@ export class MemosView extends ItemView {
             });
             allBtn.addEventListener('click', async () => {
                 this.currentTag = '';
+                this.currentQuickTag = null;
                 this.currentFilter.tag = undefined;
+                this.currentFilter.filterTags = undefined;
                 quickTagsContainer.querySelectorAll('.memos-quick-tag').forEach(btn => {
                     btn.removeClass('is-active');
                 });
@@ -210,7 +213,9 @@ export class MemosView extends ItemView {
                 
                 tagBtn.addEventListener('click', async () => {
                     this.currentTag = tag.keyword;
+                    this.currentQuickTag = tag; // 保存完整的 QuickTag 对象
                     this.currentFilter.tag = tag.keyword;
+                    this.currentFilter.filterTags = tag.keywords; // 支持多关键词筛选
                     quickTagsContainer.querySelectorAll('.memos-quick-tag').forEach(btn => {
                         btn.removeClass('is-active');
                     });
@@ -231,7 +236,40 @@ export class MemosView extends ItemView {
             return;
         }
 
-        const tags = this.currentTag ? [this.currentTag] : [];
+        // 智能标签追加
+        let tags: string[] = [];
+        
+        // 1. 先检查智能关键词（记账识别，需要数字）
+        const smartKeywords = parseSmartKeywords(this.settings.smartKeywords);
+        const smartTag = matchSmartKeyword(content, smartKeywords);
+        if (smartTag && !content.includes(`#${smartTag}`)) {
+            tags.push(smartTag);
+        }
+        
+        // 2. 检查习惯打卡关键词（不需要数字）
+        const habitKeywords = parseSmartKeywords(this.settings.habitKeywords);
+        const habitTag = matchHabitKeyword(content, habitKeywords);
+        if (habitTag && !content.includes(`#${habitTag}`) && !tags.includes(habitTag)) {
+            tags.push(habitTag);
+        }
+        
+        // 3. 再检查快捷标签分组
+        if (this.currentQuickTag && this.currentQuickTag.keywords.length > 0) {
+            // 检查内容中是否已包含分组内的任意标签（包括刚添加的智能标签）
+            const allTagsToCheck = [...this.currentQuickTag.keywords, ...tags];
+            const contentHasGroupTag = this.currentQuickTag.keywords.some(keyword => 
+                content.includes(`#${keyword}`) || tags.includes(keyword)
+            );
+            if (!contentHasGroupTag) {
+                // 内容中没有分组标签，追加第一个关键词
+                tags.push(this.currentQuickTag.keyword);
+            }
+        } else if (this.currentTag) {
+            // 单关键词模式（向后兼容）
+            if (!content.includes(`#${this.currentTag}`) && !tags.includes(this.currentTag)) {
+                tags.push(this.currentTag);
+            }
+        }
 
         try {
             let success: boolean;
@@ -312,6 +350,7 @@ export class MemosView extends ItemView {
             this.inputTextArea.style.height = 'auto';
         }
         this.currentTag = '';
+        this.currentQuickTag = null;
         // 重置标签按钮
         const quickTagsContainer = this.containerEl.querySelector('.memos-inline-quick-tags');
         if (quickTagsContainer) {
@@ -365,6 +404,7 @@ export class MemosView extends ItemView {
 
         select.addEventListener('change', () => {
             this.currentFilter.tag = select.value || undefined;
+            this.currentFilter.filterTags = undefined; // 下拉框只支持单标签筛选
             this.loadMemos();
         });
     }
@@ -398,7 +438,10 @@ export class MemosView extends ItemView {
             let memos: MemoItem[];
             
             // 根据筛选条件获取数据
-            if (this.currentFilter.tag) {
+            if (this.currentFilter.filterTags && this.currentFilter.filterTags.length > 0) {
+                // 多关键词筛选（支持标签分组）
+                memos = await this.storage.getMemosByTags(this.currentFilter.filterTags);
+            } else if (this.currentFilter.tag) {
                 memos = await this.storage.getMemosByTag(this.currentFilter.tag);
             } else if (this.currentFilter.search) {
                 memos = await this.storage.searchMemos(this.currentFilter.search);
@@ -573,16 +616,26 @@ export class MemosView extends ItemView {
 
     /**
      * 打开闪念所在的源文件
+     * 如果文件已在某个标签页打开，则切换到该标签页，避免重复打开
      */
     private async openMemoInFile(memo: MemoItem): Promise<void> {
         const file = this.app.vault.getAbstractFileByPath(memo.filePath);
-        if (file) {
-            const leaf = this.app.workspace.getLeaf(false);
-            await leaf.openFile(file as any);
-            
-            // 尝试跳转到对应行
-            // 注意：这需要编辑器 API 支持
+        if (!file) return;
+
+        // 检查是否已有打开该文件的标签页
+        const leaves = this.app.workspace.getLeavesOfType('markdown');
+        for (const leaf of leaves) {
+            const viewState = leaf.getViewState();
+            if (viewState.state?.file === memo.filePath) {
+                // 已有打开的标签页，切换到它
+                this.app.workspace.setActiveLeaf(leaf, { focus: true });
+                return;
+            }
         }
+
+        // 没有找到已打开的标签页，打开新的
+        const leaf = this.app.workspace.getLeaf(false);
+        await leaf.openFile(file as any);
     }
 
     /**
@@ -590,6 +643,7 @@ export class MemosView extends ItemView {
      */
     private filterByTag(tag: string): void {
         this.currentFilter.tag = tag;
+        this.currentFilter.filterTags = undefined; // 单标签筛选时清除多标签
         this.loadMemos();
         
         // 更新下拉框选中状态

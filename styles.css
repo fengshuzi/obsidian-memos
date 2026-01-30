@@ -137,22 +137,23 @@
 
 .memos-inline-input {
     flex: 1;
-    min-height: 36px;
-    max-height: 150px;
+    min-height: 72px;  /* 三行高度 */
+    max-height: 200px;
     padding: var(--memos-spacing-sm) var(--memos-spacing);
-    border: 1px solid var(--memos-border);
+    border: 1.5px solid var(--text-faint);  /* 更明显的边框 */
     border-radius: var(--memos-radius);
     background: var(--background-primary);
     font-size: 14px;
     line-height: 1.5;
     resize: none;
     outline: none;
-    transition: border-color 0.15s ease;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
     font-family: inherit;
 }
 
 .memos-inline-input:focus {
     border-color: var(--memos-primary);
+    box-shadow: 0 0 0 2px var(--memos-primary-light);
 }
 
 .memos-inline-input::placeholder {

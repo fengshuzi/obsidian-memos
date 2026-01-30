@@ -173,6 +173,19 @@ export class MemosStorage {
     }
 
     /**
+     * 按多个标签过滤获取闪念笔记（匹配任意一个标签即可）
+     */
+    async getMemosByTags(tags: string[]): Promise<MemoItem[]> {
+        if (tags.length === 0) return [];
+        if (tags.length === 1) return this.getMemosByTag(tags[0]);
+        
+        const allMemos = await this.getAllMemos();
+        return allMemos.filter(memo => 
+            memo.tags.some(memoTag => tags.includes(memoTag))
+        );
+    }
+
+    /**
      * 搜索闪念笔记
      */
     async searchMemos(query: string): Promise<MemoItem[]> {
