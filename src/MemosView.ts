@@ -535,6 +535,8 @@ export class MemosView extends ItemView {
     private renderMemos(): void {
         if (!this.memosList) return;
 
+        this.memosList.empty();
+
         const start = 0;
         const end = this.page * this.settings.itemsPerPage;
         const memosToShow = this.displayedMemos.slice(start, end);
