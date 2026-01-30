@@ -16,8 +16,16 @@ const NOTE_DEMO_PATH = join(
 // 定义目标 vault 配置目录
 const VAULTS = [
     {
+        name: 'Mobile',
+        path: join(BASE_PATH, '.obsidian-mobile/plugins/obsidian-memos')
+    },
+    {
         name: 'Pro',
         path: join(BASE_PATH, '.obsidian-pro/plugins/obsidian-memos')
+    },
+    {
+        name: 'iPad',
+        path: join(BASE_PATH, '.obsidian-ipad/plugins/obsidian-memos')
     },
     {
         name: '2017',
