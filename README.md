@@ -75,6 +75,58 @@ npm run build-deploy
 npm run release
 ```
 
+## 插件开发参考：监听文件变化并自动刷新视图
+
+当插件依赖 vault 内某些文件（如本插件的 journals 日记）时，若文件被**外部工具**修改（如 Alfred、Python 脚本、Quick Add 等），Obsidian 的 `vault.on('modify')` 有时不会触发，视图不会自动刷新。可采用「vault 事件 + metadataCache 事件」双监听，无需定时轮询。
+
+### 思路
+
+- **vault.on('modify' | 'create' | 'delete')**：Obsidian 自身或部分外部写入会触发，先监听并刷新。
+- **metadataCache.on('changed')**：外部修改文件后，Obsidian 重新解析该文件时会触发，用于兜底外部写入（如 Alfred/Python 写盘）。
+
+仅当变更的是「你关心的路径」时再失效缓存并刷新视图，避免无关文件变更导致多余刷新。
+
+### 示例（main.ts / 插件入口）
+
+```ts
+// 1. 存储层：文件变化时失效缓存，并告知「是否生效」
+// storage.ts
+onFileChange(file: TFile): boolean {
+    if (isMyTargetFile(file)) {  // 仅关心某路径/扩展名
+        this.invalidateCache();
+        return true;
+    }
+    return false;
+}
+
+// 2. 插件层：vault 三事件 + metadataCache.changed，生效时刷新视图
+// main.ts
+this.registerEvent(this.app.vault.on('modify', (file) => {
+    if (file instanceof TFile && this.storage?.onFileChange(file)) {
+        this.getActiveMyView()?.refresh();
+    }
+}));
+this.registerEvent(this.app.vault.on('create', (file) => {
+    if (file instanceof TFile && this.storage?.onFileChange(file)) {
+        this.getActiveMyView()?.refresh();
+    }
+}));
+this.registerEvent(this.app.vault.on('delete', (file) => {
+    if (file instanceof TFile && this.storage?.onFileChange(file)) {
+        this.getActiveMyView()?.refresh();
+    }
+}));
+// 外部修改（如 Alfred/Python 写文件）时，vault.modify 可能不触发；
+// metadataCache 在重新解析文件后会触发 changed
+this.registerEvent(this.app.metadataCache.on('changed', (file) => {
+    if (file instanceof TFile && this.storage?.onFileChange(file)) {
+        this.getActiveMyView()?.refresh();
+    }
+}));
+```
+
+其他插件只需：实现自己的 `isMyTargetFile` 与 `invalidateCache`，并在 `onFileChange` 里返回是否生效；在 main 里用上述四段 `registerEvent` 即可复用该方案。
+
 ## 设计灵感
 
 - [Logseq](https://logseq.com/) - 闪念功能和 Journal 格式

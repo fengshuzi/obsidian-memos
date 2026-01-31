@@ -462,11 +462,14 @@ export class MemosStorage {
     }
 
     /**
-     * 监听文件变化
+     * 监听文件变化（日记文件修改/新增/删除时失效缓存）
+     * @returns 是否为日记文件且已失效缓存（调用方可用于决定是否刷新视图）
      */
-    onFileChange(file: TFile): void {
+    onFileChange(file: TFile): boolean {
         if (isJournalFile(file, this.settings.journalFolder)) {
             this.invalidateCache();
+            return true;
         }
+        return false;
     }
 }

@@ -46,27 +46,36 @@ export default class MemosPlugin extends Plugin {
         // 添加设置页面
         this.addSettingTab(new MemosSettingTab(this.app, this));
 
-        // 监听文件变化
+        // 监听日记文件变化（Alfred/外部写入等），失效缓存并刷新视图，无需定时轮询
         this.registerEvent(
             this.app.vault.on('modify', (file) => {
-                if (file instanceof TFile) {
-                    this.storage?.onFileChange(file);
+                if (file instanceof TFile && this.storage?.onFileChange(file)) {
+                    this.getActiveMemosView()?.refresh();
                 }
             })
         );
 
         this.registerEvent(
             this.app.vault.on('create', (file) => {
-                if (file instanceof TFile) {
-                    this.storage?.onFileChange(file);
+                if (file instanceof TFile && this.storage?.onFileChange(file)) {
+                    this.getActiveMemosView()?.refresh();
                 }
             })
         );
 
         this.registerEvent(
             this.app.vault.on('delete', (file) => {
-                if (file instanceof TFile) {
-                    this.storage?.onFileChange(file);
+                if (file instanceof TFile && this.storage?.onFileChange(file)) {
+                    this.getActiveMemosView()?.refresh();
+                }
+            })
+        );
+
+        // 外部修改（如 Alfred/Python 写文件）时，vault 的 modify 可能不触发；metadataCache 在重新解析文件后会触发 changed
+        this.registerEvent(
+            this.app.metadataCache.on('changed', (file) => {
+                if (file instanceof TFile && this.storage?.onFileChange(file)) {
+                    this.getActiveMemosView()?.refresh();
                 }
             })
         );
