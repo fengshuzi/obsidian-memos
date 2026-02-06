@@ -275,10 +275,10 @@ export class MemosStorage {
             const restContent = tagOnlyMatch[1];
             const tags = extractTags(restContent);
             
-            // 检查是否包含配置的快捷标签
+            // 检查是否包含配置的快捷标签（聚合标签要检查整组关键词，如 cy+jf+qt+gw|每日记账 里的 jf 也要识别）
             const quickTags = parseQuickTags(this.settings.quickTags);
-            const quickTagKeywords = quickTags.map(t => t.keyword);
-            const hasQuickTag = tags.some(tag => quickTagKeywords.includes(tag));
+            const allQuickKeywords = new Set(quickTags.flatMap(t => t.keywords));
+            const hasQuickTag = tags.some(tag => allQuickKeywords.has(tag));
             
             if (hasQuickTag) {
                 // 移除标签获取纯内容

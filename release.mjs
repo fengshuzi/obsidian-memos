@@ -1,4 +1,4 @@
-import { execSync } from 'child_process';
+import { execSync, spawnSync } from 'child_process';
 import { readFileSync, existsSync } from 'fs';
 
 // 读取 manifest.json 获取版本号
@@ -69,10 +69,9 @@ try {
     process.exit(1);
 }
 
-// 创建 GitHub Release
+// 创建 GitHub Release（用 spawnSync 传参，不经过 shell，避免多行 --notes 被拆成多条命令）
 console.log('\n🚀 创建 GitHub Release...');
-try {
-    const releaseNotes = `## Obsidian Memos v${version}
+const releaseNotes = `## Obsidian Memos v${version}
 
 ### 功能特性
 - 🚀 快速捕获灵感，像发微博一样记录笔记
@@ -86,10 +85,14 @@ try {
 2. 复制到 \`.obsidian/plugins/obsidian-memos/\` 目录
 3. 在 Obsidian 设置中启用插件
 `;
-    
-    execSync(`gh release create ${tagName} ${mainJsPath} ${manifestPath} ${stylesPath} --title "v${version}" --notes "${releaseNotes.replace(/"/g, '\\"')}"`, { stdio: 'inherit' });
-    console.log(`\n✅ 发布成功! Release: ${tagName}`);
-} catch {
+const r = spawnSync('gh', [
+    'release', 'create', tagName,
+    mainJsPath, manifestPath, stylesPath,
+    '--title', `v${version}`,
+    '--notes', releaseNotes
+], { stdio: 'inherit', shell: false });
+if (r.status !== 0) {
     console.error('❌ 创建 Release 失败');
     process.exit(1);
 }
+console.log(`\n✅ 发布成功! Release: ${tagName}`);
