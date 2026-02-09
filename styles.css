@@ -314,6 +314,160 @@
     transform: translateY(-1px);
 }
 
+/* 任务卡片样式 */
+.memos-card-task {
+    border-left-width: 3px;
+}
+
+/* 复选框任务样式 */
+.memos-task-checkbox_unchecked {
+    border-left-color: #94a3b8;
+}
+
+.memos-task-checkbox_checked {
+    border-left-color: #10b981;
+}
+
+.memos-task-checkbox_checked .memos-card-content {
+    opacity: 0.7;
+}
+
+/* 关键词任务样式 */
+.memos-task-todo {
+    border-left-color: #3b82f6;
+}
+
+.memos-task-doing {
+    border-left-color: #f59e0b;
+}
+
+.memos-task-done {
+    border-left-color: #10b981;
+}
+
+.memos-task-done .memos-card-content {
+    opacity: 0.7;
+}
+
+.memos-task-now {
+    border-left-color: #ef4444;
+}
+
+.memos-task-later {
+    border-left-color: #8b5cf6;
+}
+
+.memos-task-waiting {
+    border-left-color: #06b6d4;
+}
+
+.memos-task-cancelled {
+    border-left-color: #6b7280;
+}
+
+.memos-task-cancelled .memos-card-content {
+    opacity: 0.6;
+    text-decoration: line-through;
+}
+
+/* 任务复选框样式优化 */
+.memos-task-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+}
+
+.memos-task-container .task-list-item-checkbox {
+    margin: 0;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.memos-task-container .memos-task-text {
+    flex: 1;
+    line-height: 1.6;
+}
+
+.memos-task-container .memos-task-text p {
+    margin: 0;
+    display: inline;
+}
+
+/* 关键词任务样式 */
+.memos-task-keyword-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+}
+
+.memos-task-keyword-container .task-list-item-checkbox {
+    margin: 0;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+/* 状态标签样式 */
+.memos-task-status-label {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 4px;
+    text-transform: uppercase;
+    flex-shrink: 0;
+}
+
+.memos-status-doing {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+}
+
+.memos-status-now {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}
+
+.memos-status-later {
+    background: rgba(139, 92, 246, 0.15);
+    color: #8b5cf6;
+}
+
+.memos-status-waiting {
+    background: rgba(6, 182, 212, 0.15);
+    color: #06b6d4;
+}
+
+.memos-status-cancelled {
+    background: rgba(107, 114, 128, 0.15);
+    color: #6b7280;
+}
+
+.memos-task-keyword-container .memos-task-text {
+    flex: 1;
+    line-height: 1.6;
+}
+
+.memos-task-keyword-container .memos-task-text p {
+    margin: 0;
+    display: inline;
+}
+
+/* 移除 Markdown 渲染的多余元素 */
+.memos-card-content ul {
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.memos-card-content ul.contains-task-list {
+    padding: 0;
+}
+
+.memos-card-content li.task-list-item {
+    margin: 0;
+    padding: 0;
+}
+
 .memos-card-more {
     position: absolute;
     right: var(--memos-spacing-sm);
@@ -378,6 +532,26 @@
 
 .memos-card {
     animation: memos-fade-in 0.2s ease;
+}
+
+/* 卡片更新动画 */
+@keyframes memos-card-update {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(0.98);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.memos-card.updating {
+    animation: memos-card-update 0.3s ease;
 }
 
 
@@ -577,6 +751,25 @@
 
 .memos-quick-tag-all {
     font-weight: 500;
+}
+
+/* 任务列表标签样式 */
+.memos-task-list-tag {
+    background: rgba(59, 130, 246, 0.1);
+    border-color: #3b82f6;
+    color: #3b82f6;
+}
+
+.memos-task-list-tag:hover {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: #2563eb;
+    color: #2563eb;
+}
+
+.memos-task-list-tag.is-active {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: white;
 }
 
 .memos-input-footer {

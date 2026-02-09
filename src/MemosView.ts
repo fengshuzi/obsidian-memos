@@ -4,9 +4,9 @@
  * 在主内容区域显示（和普通文档一样的标签页）
  */
 
-import { ItemView, WorkspaceLeaf, Menu, Notice, MarkdownRenderer } from 'obsidian';
+import { ItemView, WorkspaceLeaf, Menu, Notice, MarkdownRenderer, TFile } from 'obsidian';
 import { MemosStorage } from './storage';
-import { MemoItem, MemosPluginSettings, MEMOS_VIEW_TYPE, parseQuickTags, QuickTag, parseSmartKeywords, matchSmartKeyword, matchHabitKeyword } from './types';
+import { MemoItem, MemosPluginSettings, MEMOS_VIEW_TYPE, parseQuickTags, QuickTag, parseSmartKeywords, matchSmartKeyword, matchHabitKeyword, TaskStatus } from './types';
 import { getFriendlyDateDisplay, debounce, truncateText } from './utils';
 import { MemoInputModal } from './InputModal';
 import type MemosPlugin from './main';
@@ -17,7 +17,7 @@ export class MemosView extends ItemView {
     private settings: MemosPluginSettings;
     private contentContainer: HTMLElement | null = null;
     private memosList: HTMLElement | null = null;
-    private currentFilter: { tag?: string; filterTags?: string[]; search?: string } = {};
+    private currentFilter: { tag?: string; filterTags?: string[]; search?: string; taskListMode?: 'all' | 'todo' | 'done' } = {};
     private displayedMemos: MemoItem[] = [];
     private page: number = 1;
     private inputTextArea: HTMLTextAreaElement | null = null;
@@ -205,6 +205,7 @@ export class MemosView extends ItemView {
                 this.currentQuickTag = null;
                 this.currentFilter.tag = undefined;
                 this.currentFilter.filterTags = undefined;
+                this.currentFilter.taskListMode = undefined; // 清除任务列表模式
                 quickTagsContainer.querySelectorAll('.memos-quick-tag').forEach(btn => {
                     btn.removeClass('is-active');
                 });
@@ -226,10 +227,71 @@ export class MemosView extends ItemView {
                     this.currentQuickTag = tag;
                     this.currentFilter.tag = tag.keyword;
                     this.currentFilter.filterTags = tag.keywords;
+                    this.currentFilter.taskListMode = undefined; // 清除任务列表模式
                     quickTagsContainer.querySelectorAll('.memos-quick-tag').forEach(btn => {
                         btn.removeClass('is-active');
                     });
                     tagBtn.addClass('is-active');
+                    syncQuickTagsSelect();
+                    await this.loadMemos();
+                });
+            }
+
+            // 特殊任务列表标签
+            if (this.settings.enableTaskListTags) {
+                // 所有任务
+                const allTasksBtn = quickTagsContainer.createEl('button', {
+                    cls: 'memos-quick-tag memos-task-list-tag',
+                    text: this.settings.allTasksTagName
+                });
+                allTasksBtn.addEventListener('click', async () => {
+                    this.currentTag = '';
+                    this.currentQuickTag = null;
+                    this.currentFilter.tag = undefined;
+                    this.currentFilter.filterTags = undefined;
+                    this.currentFilter.taskListMode = 'all'; // 显示所有任务
+                    quickTagsContainer.querySelectorAll('.memos-quick-tag').forEach(btn => {
+                        btn.removeClass('is-active');
+                    });
+                    allTasksBtn.addClass('is-active');
+                    syncQuickTagsSelect();
+                    await this.loadMemos();
+                });
+
+                // 待办任务
+                const todoListBtn = quickTagsContainer.createEl('button', {
+                    cls: 'memos-quick-tag memos-task-list-tag',
+                    text: this.settings.todoListTagName
+                });
+                todoListBtn.addEventListener('click', async () => {
+                    this.currentTag = '';
+                    this.currentQuickTag = null;
+                    this.currentFilter.tag = undefined;
+                    this.currentFilter.filterTags = undefined;
+                    this.currentFilter.taskListMode = 'todo'; // 只显示未完成任务
+                    quickTagsContainer.querySelectorAll('.memos-quick-tag').forEach(btn => {
+                        btn.removeClass('is-active');
+                    });
+                    todoListBtn.addClass('is-active');
+                    syncQuickTagsSelect();
+                    await this.loadMemos();
+                });
+
+                // 已完成任务
+                const doneListBtn = quickTagsContainer.createEl('button', {
+                    cls: 'memos-quick-tag memos-task-list-tag',
+                    text: this.settings.doneListTagName
+                });
+                doneListBtn.addEventListener('click', async () => {
+                    this.currentTag = '';
+                    this.currentQuickTag = null;
+                    this.currentFilter.tag = undefined;
+                    this.currentFilter.filterTags = undefined;
+                    this.currentFilter.taskListMode = 'done'; // 只显示已完成任务
+                    quickTagsContainer.querySelectorAll('.memos-quick-tag').forEach(btn => {
+                        btn.removeClass('is-active');
+                    });
+                    doneListBtn.addClass('is-active');
                     syncQuickTagsSelect();
                     await this.loadMemos();
                 });
@@ -500,6 +562,31 @@ export class MemosView extends ItemView {
                 memos = await this.storage.getAllMemos();
             }
 
+            // 任务列表模式过滤
+            if (this.currentFilter.taskListMode) {
+                if (this.currentFilter.taskListMode === 'all') {
+                    // 显示所有任务（包括 markdown 复选框和关键词任务）
+                    memos = memos.filter(memo => memo.taskStatus !== undefined);
+                } else if (this.currentFilter.taskListMode === 'todo') {
+                    // 显示未完成任务：[ ]、TODO、DOING、NOW、LATER、WAITING
+                    memos = memos.filter(memo => 
+                        memo.taskStatus === 'CHECKBOX_UNCHECKED' ||
+                        memo.taskStatus === 'TODO' ||
+                        memo.taskStatus === 'DOING' ||
+                        memo.taskStatus === 'NOW' ||
+                        memo.taskStatus === 'LATER' ||
+                        memo.taskStatus === 'WAITING'
+                    );
+                } else if (this.currentFilter.taskListMode === 'done') {
+                    // 显示已完成任务：[x]、DONE、CANCELLED
+                    memos = memos.filter(memo => 
+                        memo.taskStatus === 'CHECKBOX_CHECKED' ||
+                        memo.taskStatus === 'DONE' ||
+                        memo.taskStatus === 'CANCELLED'
+                    );
+                }
+            }
+
             const searchQuery = this.currentFilter.search?.trim();
             if (searchQuery) {
                 const lowerQuery = searchQuery.toLowerCase();
@@ -566,6 +653,7 @@ export class MemosView extends ItemView {
     /**
      * 渲染单条闪念卡片
      * 简洁风格：直接显示完整内容，和笔记格式一致
+     * 支持任务状态显示和时间追踪
      */
     private renderMemoCard(memo: MemoItem): void {
         if (!this.memosList) return;
@@ -573,27 +661,125 @@ export class MemosView extends ItemView {
         const card = this.memosList.createDiv({ cls: 'memos-card' });
         card.setAttribute('data-memo-id', memo.id);
 
-        // 构建完整的显示内容：时间 + 标签 + 内容
-        let displayContent = '';
-        if (memo.timeString) {
-            displayContent = memo.timeString + ' ';
+        // 如果是任务，添加任务状态类
+        if (memo.taskStatus) {
+            card.addClass('memos-card-task');
+            card.addClass(`memos-task-${memo.taskStatus.toLowerCase()}`);
         }
-        if (memo.tags.length > 0) {
-            displayContent += memo.tags.map(t => `#${t}`).join(' ') + ' ';
-        }
-        displayContent += memo.content;
 
         // 卡片内容
         const cardContent = card.createDiv({ cls: 'memos-card-content' });
         
-        // 使用 Markdown 渲染完整内容
-        MarkdownRenderer.render(
-            this.app,
-            displayContent,
-            cardContent,
-            memo.filePath,
-            this
-        );
+        // 对于复选框任务，直接创建 HTML 元素并支持点击切换
+        if (memo.taskStatus === 'CHECKBOX_UNCHECKED' || memo.taskStatus === 'CHECKBOX_CHECKED') {
+            const taskContainer = cardContent.createDiv({ cls: 'memos-task-container' });
+            
+            // 创建复选框
+            const checkbox = taskContainer.createEl('input', {
+                type: 'checkbox',
+                cls: 'task-list-item-checkbox'
+            });
+            checkbox.checked = memo.taskStatus === 'CHECKBOX_CHECKED';
+            
+            // 如果启用时间追踪，点击复选框切换任务状态
+            if (this.settings.enableTimeTracking) {
+                checkbox.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    await this.toggleTaskStatus(memo);
+                });
+            } else {
+                // 禁用时间追踪时，复选框只读
+                checkbox.disabled = true;
+            }
+            
+            // 创建文本内容
+            const textSpan = taskContainer.createSpan({ cls: 'memos-task-text' });
+            let textContent = '';
+            if (memo.timeString) {
+                textContent += memo.timeString + ' ';
+            }
+            if (memo.tags.length > 0) {
+                textContent += memo.tags.map(t => `#${t}`).join(' ') + ' ';
+            }
+            textContent += memo.content;
+            
+            // 渲染文本内容（支持 Markdown）
+            MarkdownRenderer.render(
+                this.app,
+                textContent,
+                textSpan,
+                memo.filePath,
+                this
+            );
+        } 
+        // 对于关键词任务，渲染为复选框 + 状态标签（参考 time-tracking）
+        else if (memo.taskStatus) {
+            const taskContainer = cardContent.createDiv({ cls: 'memos-task-keyword-container' });
+            
+            // 创建复选框（用于点击切换）
+            const checkbox = taskContainer.createEl('input', {
+                type: 'checkbox',
+                cls: 'task-list-item-checkbox'
+            });
+            checkbox.checked = memo.taskStatus === 'DONE' || memo.taskStatus === 'CANCELLED';
+            
+            // 如果启用时间追踪，点击复选框切换任务状态
+            if (this.settings.enableTimeTracking) {
+                checkbox.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    await this.toggleTaskStatus(memo);
+                });
+            } else {
+                // 禁用时间追踪时，复选框只读
+                checkbox.disabled = true;
+            }
+            
+            // 显示状态标签（除了 TODO 和 DONE，它们只显示复选框）
+            if (!['TODO', 'DONE'].includes(memo.taskStatus)) {
+                const statusLabel = taskContainer.createEl('span', {
+                    cls: `memos-task-status-label memos-status-${memo.taskStatus.toLowerCase()}`
+                });
+                statusLabel.textContent = memo.taskStatus;
+            }
+            
+            // 创建文本内容
+            const textSpan = taskContainer.createSpan({ cls: 'memos-task-text' });
+            let textContent = '';
+            if (memo.timeString) {
+                textContent += memo.timeString + ' ';
+            }
+            if (memo.tags.length > 0) {
+                textContent += memo.tags.map(t => `#${t}`).join(' ') + ' ';
+            }
+            textContent += memo.content;
+            
+            MarkdownRenderer.render(
+                this.app,
+                textContent,
+                textSpan,
+                memo.filePath,
+                this
+            );
+        }
+        // 普通闪念
+        else {
+            let displayContent = '';
+            if (memo.timeString) {
+                displayContent = memo.timeString + ' ';
+            }
+            if (memo.tags.length > 0) {
+                displayContent += memo.tags.map(t => `#${t}`).join(' ') + ' ';
+            }
+            displayContent += memo.content;
+            
+            MarkdownRenderer.render(
+                this.app,
+                displayContent,
+                cardContent,
+                memo.filePath,
+                this
+            );
+        }
 
         // 更多操作按钮（悬停显示）
         const moreBtn = card.createEl('button', { 
@@ -610,6 +796,327 @@ export class MemosView extends ItemView {
         card.addEventListener('click', () => {
             this.openMemoInFile(memo);
         });
+    }
+
+    /**
+     * 切换任务状态并追踪时间（局部更新，无刷新）
+     */
+    private async toggleTaskStatus(memo: MemoItem): Promise<void> {
+        const file = this.app.vault.getAbstractFileByPath(memo.filePath);
+        if (!(file instanceof TFile)) return;
+
+        const content = await this.app.vault.read(file);
+        const lines = content.split('\n');
+        
+        if (memo.lineNumber < 1 || memo.lineNumber > lines.length) return;
+        
+        const lineIndex = memo.lineNumber - 1;
+        const oldLine = lines[lineIndex];
+        const newLine = this.toggleTaskStatusInLine(oldLine);
+        
+        // 修改文件
+        lines[lineIndex] = newLine;
+        await this.app.vault.modify(file, lines.join('\n'));
+        
+        // 解析新的 memo
+        const updatedMemo = this.storage.parseMemoLine(
+            newLine,
+            memo.filePath,
+            memo.lineNumber,
+            memo.dateString
+        );
+        
+        if (updatedMemo) {
+            // 更新缓存
+            this.storage.updateMemoInCache(updatedMemo);
+            
+            // 更新 displayedMemos 中的数据
+            const displayIndex = this.displayedMemos.findIndex(m => 
+                m.filePath === memo.filePath && 
+                m.lineNumber === memo.lineNumber
+            );
+            if (displayIndex !== -1) {
+                this.displayedMemos[displayIndex] = updatedMemo;
+            }
+            
+            // 局部更新卡片 UI
+            this.updateSingleCard(memo.id, updatedMemo);
+        }
+    }
+
+    /**
+     * 更新单个卡片（局部更新，不刷新整个列表）
+     */
+    private updateSingleCard(oldMemoId: string, newMemo: MemoItem): void {
+        if (!this.memosList) return;
+
+        // 找到对应的卡片
+        const card = this.memosList.querySelector(`[data-memo-id="${oldMemoId}"]`) as HTMLElement;
+        if (!card) return;
+
+        // 添加更新动画类
+        card.addClass('updating');
+
+        // 创建新卡片
+        const newCard = this.memosList.createDiv({ cls: 'memos-card' });
+        newCard.setAttribute('data-memo-id', newMemo.id);
+
+        // 如果是任务，添加任务状态类
+        if (newMemo.taskStatus) {
+            newCard.addClass('memos-card-task');
+            newCard.addClass(`memos-task-${newMemo.taskStatus.toLowerCase()}`);
+        }
+
+        // 卡片内容
+        const cardContent = newCard.createDiv({ cls: 'memos-card-content' });
+        
+        // 对于复选框任务
+        if (newMemo.taskStatus === 'CHECKBOX_UNCHECKED' || newMemo.taskStatus === 'CHECKBOX_CHECKED') {
+            const taskContainer = cardContent.createDiv({ cls: 'memos-task-container' });
+            
+            const checkbox = taskContainer.createEl('input', {
+                type: 'checkbox',
+                cls: 'task-list-item-checkbox'
+            });
+            checkbox.checked = newMemo.taskStatus === 'CHECKBOX_CHECKED';
+            
+            if (this.settings.enableTimeTracking) {
+                checkbox.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    await this.toggleTaskStatus(newMemo);
+                });
+            } else {
+                checkbox.disabled = true;
+            }
+            
+            const textSpan = taskContainer.createSpan({ cls: 'memos-task-text' });
+            let textContent = '';
+            if (newMemo.timeString) {
+                textContent += newMemo.timeString + ' ';
+            }
+            if (newMemo.tags.length > 0) {
+                textContent += newMemo.tags.map(t => `#${t}`).join(' ') + ' ';
+            }
+            textContent += newMemo.content;
+            
+            MarkdownRenderer.render(
+                this.app,
+                textContent,
+                textSpan,
+                newMemo.filePath,
+                this
+            );
+        } 
+        // 对于关键词任务
+        else if (newMemo.taskStatus) {
+            const taskContainer = cardContent.createDiv({ cls: 'memos-task-keyword-container' });
+            
+            const checkbox = taskContainer.createEl('input', {
+                type: 'checkbox',
+                cls: 'task-list-item-checkbox'
+            });
+            checkbox.checked = newMemo.taskStatus === 'DONE' || newMemo.taskStatus === 'CANCELLED';
+            
+            if (this.settings.enableTimeTracking) {
+                checkbox.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    await this.toggleTaskStatus(newMemo);
+                });
+            } else {
+                checkbox.disabled = true;
+            }
+            
+            if (!['TODO', 'DONE'].includes(newMemo.taskStatus)) {
+                const statusLabel = taskContainer.createEl('span', {
+                    cls: `memos-task-status-label memos-status-${newMemo.taskStatus.toLowerCase()}`
+                });
+                statusLabel.textContent = newMemo.taskStatus;
+            }
+            
+            const textSpan = taskContainer.createSpan({ cls: 'memos-task-text' });
+            let textContent = '';
+            if (newMemo.timeString) {
+                textContent += newMemo.timeString + ' ';
+            }
+            if (newMemo.tags.length > 0) {
+                textContent += newMemo.tags.map(t => `#${t}`).join(' ') + ' ';
+            }
+            textContent += newMemo.content;
+            
+            MarkdownRenderer.render(
+                this.app,
+                textContent,
+                textSpan,
+                newMemo.filePath,
+                this
+            );
+        }
+        // 普通闪念
+        else {
+            let displayContent = '';
+            if (newMemo.timeString) {
+                displayContent = newMemo.timeString + ' ';
+            }
+            if (newMemo.tags.length > 0) {
+                displayContent += newMemo.tags.map(t => `#${t}`).join(' ') + ' ';
+            }
+            displayContent += newMemo.content;
+            
+            MarkdownRenderer.render(
+                this.app,
+                displayContent,
+                cardContent,
+                newMemo.filePath,
+                this
+            );
+        }
+
+        // 更多操作按钮
+        const moreBtn = newCard.createEl('button', { 
+            cls: 'memos-card-more',
+            attr: { 'aria-label': '更多操作' }
+        });
+        moreBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>';
+        moreBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.showMemoMenu(newMemo, moreBtn);
+        });
+
+        // 点击卡片跳转到源文件
+        newCard.addEventListener('click', () => {
+            this.openMemoInFile(newMemo);
+        });
+
+        // 替换旧卡片
+        card.replaceWith(newCard);
+    }
+
+    /**
+     * 对单行文本执行任务状态切换（参考 obsidian-time-tracking）
+     */
+    private toggleTaskStatusInLine(line: string): string {
+        // 如果禁用时间追踪，直接返回原行（不做任何修改）
+        if (!this.settings.enableTimeTracking) {
+            return line;
+        }
+
+        // 移除时间注释
+        const removeTimeComment = (text: string) => text.replace(/\s*<!--\s*ts:[^>]*?-->\s*/g, '');
+        const cleanedLine = removeTimeComment(line);
+
+        // 格式化时间
+        const formatStartTime = (isoString: string): string => {
+            const date = new Date(isoString);
+            return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+        };
+
+        // 格式化时长
+        const formatDuration = (seconds: number): string => {
+            if (seconds < 60) return `${seconds}秒`;
+            if (seconds < 3600) return `${Math.floor(seconds / 60)}分钟`;
+            return `${Math.floor(seconds / 3600)}小时`;
+        };
+
+        // 提取时间追踪信息
+        const extractTrackingInfo = (text: string): { startTime: string; source: 'todo' | 'checkbox' } | null => {
+            const match = text.match(/<!--\s*ts:([^|]+)\|source:(\w+)\s*-->/);
+            return match ? { startTime: match[1], source: match[2] as 'todo' | 'checkbox' } : null;
+        };
+
+        // 1. 检查复选框格式
+        const checkboxMatch = cleanedLine.match(/^-\s+\[([ xX])\]\s+(\d{2}:\d{2})?\s*(.*)$/);
+        if (checkboxMatch) {
+            const [, checkState, timeStr, content] = checkboxMatch;
+            
+            if (checkState === ' ') {
+                // [ ] → DOING
+                const startTime = new Date().toISOString();
+                const displayTime = formatStartTime(startTime);
+                return `- DOING ${displayTime} <!-- ts:${startTime}|source:checkbox --> ${content}`;
+            } else {
+                // [x] → 普通列表
+                return `- ${timeStr ? timeStr + ' ' : ''}${content}`;
+            }
+        }
+
+        // 2. 检查关键词任务格式
+        const todoMatch = cleanedLine.match(/^-\s+(TODO)\s+(\d{2}:\d{2})?\s*(.*)$/);
+        const doingMatch = line.match(/^-\s+(DOING)\s+(\d{2}:\d{2})?\s*(?:<!--[^>]*-->)?\s*(.*)$/);
+        const doneMatch = cleanedLine.match(/^-\s+(DONE)\s+(\d{2}:\d{2})?\s*(.*)$/);
+
+        if (todoMatch) {
+            // TODO → DOING
+            const [, , timeStr, content] = todoMatch;
+            const startTime = new Date().toISOString();
+            const displayTime = formatStartTime(startTime);
+            return `- DOING ${displayTime} <!-- ts:${startTime}|source:todo --> ${content}`;
+            
+        } else if (doingMatch) {
+            // DOING → DONE 或 [x]
+            const [, , timeStr, content] = doingMatch;
+            const trackingInfo = extractTrackingInfo(line);
+            
+            if (trackingInfo) {
+                const start = new Date(trackingInfo.startTime);
+                const end = new Date();
+                const durationSeconds = Math.floor((end.getTime() - start.getTime()) / 1000);
+                const durationStr = formatDuration(durationSeconds);
+                const taskText = removeTimeComment(content).trim();
+                
+                if (trackingInfo.source === 'checkbox') {
+                    // 返回 [x]，根据配置决定是否追加时长
+                    if (this.settings.autoAppendDuration) {
+                        return timeStr 
+                            ? `- [x] ${timeStr} ${taskText} ${durationStr}`
+                            : `- [x] ${taskText} ${durationStr}`;
+                    } else {
+                        return timeStr 
+                            ? `- [x] ${timeStr} ${taskText}`
+                            : `- [x] ${taskText}`;
+                    }
+                } else {
+                    // 返回 DONE，根据配置决定是否追加时长
+                    if (this.settings.autoAppendDuration) {
+                        return timeStr
+                            ? `- DONE ${timeStr} ${taskText} ${durationStr}`
+                            : `- DONE ${taskText} ${durationStr}`;
+                    } else {
+                        return timeStr
+                            ? `- DONE ${timeStr} ${taskText}`
+                            : `- DONE ${taskText}`;
+                    }
+                }
+            } else {
+                const taskText = removeTimeComment(content).trim();
+                return timeStr ? `- DONE ${timeStr} ${taskText}` : `- DONE ${taskText}`;
+            }
+            
+        } else if (doneMatch) {
+            // DONE → 普通列表
+            const [, , timeStr, content] = doneMatch;
+            const taskText = content.replace(/\s+\d+(秒|分钟|小时)$/, '').trim();
+            return timeStr ? `- ${timeStr} ${taskText}` : `- ${taskText}`;
+        }
+
+        return line;
+    }
+
+    /**
+     * 获取任务状态图标（仅用于关键词任务）
+     */
+    private getTaskStatusIcon(status: TaskStatus): string {
+        const icons: Record<TaskStatus, string> = {
+            'CHECKBOX_UNCHECKED': '',
+            'CHECKBOX_CHECKED': '',
+            'TODO': '📝',
+            'DOING': '⚡',
+            'DONE': '✅',
+            'NOW': '🔥',
+            'LATER': '⏰',
+            'WAITING': '⏳',
+            'CANCELLED': '❌',
+        };
+        return icons[status] || '';
     }
 
     /**

@@ -212,7 +212,7 @@ export class MemosStorage {
 
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
-            const memo = this.parseMemoLine(line, file.path, i + 1, dateStr);
+            const memo = this.parseMemoLineInternal(line, file.path, i + 1, dateStr);
             if (memo) {
                 memos.push(memo);
             }
@@ -225,18 +225,122 @@ export class MemosStorage {
     }
 
     /**
-     * 解析单行闪念笔记
-     * 支持两种格式:
-     * 1. - HH:mm 内容 或 - HH:mm #tag1 #tag2 内容 (有时间戳)
-     * 2. - #配置标签 内容 (有配置的快捷标签，无时间戳)
+     * 解析单行闪念笔记（公共方法，供外部调用）
      */
-    private parseMemoLine(
+    public parseMemoLine(
         line: string, 
         filePath: string, 
         lineNumber: number,
         dateStr: string
     ): MemoItem | null {
-        // 首先尝试匹配有时间戳的格式
+        return this.parseMemoLineInternal(line, filePath, lineNumber, dateStr);
+    }
+
+    /**
+     * 解析单行闪念笔记
+     * 支持三种格式:
+     * 1. - HH:mm 内容 或 - HH:mm #tag1 #tag2 内容 (有时间戳)
+     * 2. - #配置标签 内容 (有配置的快捷标签，无时间戳)
+     * 3. - [ ] HH:mm 内容 或 - [x] HH:mm 内容 (任务复选框格式)
+     * 4. - TODO HH:mm 内容 或 - DONE 内容 等 (任务关键词格式)
+     */
+    private parseMemoLineInternal(
+        line: string, 
+        filePath: string, 
+        lineNumber: number,
+        dateStr: string
+    ): MemoItem | null {
+        // 首先尝试匹配任务复选框格式: - [ ] HH:mm 内容 或 - [x] HH:mm 内容
+        const checkboxMatch = line.match(/^-\s*\[([ xX])\]\s*(\d{2}:\d{2})?\s*(.+)$/);
+        if (checkboxMatch) {
+            const [, checkStatus, timeString, restContent] = checkboxMatch;
+            const taskStatus: TaskStatus = (checkStatus === ' ') ? 'CHECKBOX_UNCHECKED' : 'CHECKBOX_CHECKED';
+            
+            // 提取标签
+            const tags = extractTags(restContent);
+            
+            // 移除标签获取纯内容
+            let content = restContent;
+            for (const tag of tags) {
+                content = content.replace(`#${tag}`, '').trim();
+            }
+            content = content.replace(/\s+/g, ' ').trim();
+
+            // 构建完整时间戳
+            let timestamp: Date;
+            let finalTimeString: string;
+            if (timeString) {
+                const [hours, minutes] = timeString.split(':').map(Number);
+                timestamp = new Date(dateStr);
+                timestamp.setHours(hours, minutes, 0, 0);
+                finalTimeString = timeString;
+            } else {
+                // 没有时间戳，使用当天的 00:00
+                timestamp = new Date(dateStr);
+                timestamp.setHours(0, 0, 0, 0);
+                finalTimeString = '';
+            }
+
+            return {
+                id: generateId(),
+                content: content,
+                timestamp: timestamp,
+                timeString: finalTimeString,
+                tags: tags,
+                filePath: filePath,
+                lineNumber: lineNumber,
+                rawText: line,
+                dateString: dateStr,
+                taskStatus: taskStatus,
+            };
+        }
+
+        // 尝试匹配任务关键词格式: - TODO HH:mm 内容 或 - DONE 内容
+        const keywordMatch = line.match(/^-\s*(TODO|DONE|DOING|NOW|LATER|WAITING|CANCELLED)\s+(\d{2}:\d{2})?\s*(.+)$/i);
+        if (keywordMatch) {
+            const [, keyword, timeString, restContent] = keywordMatch;
+            const taskStatus = keyword.toUpperCase() as TaskStatus;
+            
+            // 提取标签
+            const tags = extractTags(restContent);
+            
+            // 移除标签获取纯内容
+            let content = restContent;
+            for (const tag of tags) {
+                content = content.replace(`#${tag}`, '').trim();
+            }
+            content = content.replace(/\s+/g, ' ').trim();
+
+            // 构建完整时间戳
+            let timestamp: Date;
+            let finalTimeString: string;
+            if (timeString) {
+                const [hours, minutes] = timeString.split(':').map(Number);
+                timestamp = new Date(dateStr);
+                timestamp.setHours(hours, minutes, 0, 0);
+                finalTimeString = timeString;
+            } else {
+                // 没有时间戳，使用当天的 00:00
+                timestamp = new Date(dateStr);
+                timestamp.setHours(0, 0, 0, 0);
+                finalTimeString = '';
+            }
+
+            return {
+                id: generateId(),
+                content: content,
+                timestamp: timestamp,
+                timeString: finalTimeString,
+                tags: tags,
+                filePath: filePath,
+                lineNumber: lineNumber,
+                rawText: line,
+                dateString: dateStr,
+                taskStatus: taskStatus,
+            };
+        }
+
+        // 尝试匹配有时间戳的格式
         const match = line.match(MEMO_PATTERN);
         if (match) {
             const [, timeString, restContent] = match;
@@ -447,6 +551,25 @@ export class MemosStorage {
             todayMemos,
             thisWeekMemos,
         };
+    }
+
+    /**
+     * 更新缓存中的单个 memo
+     */
+    updateMemoInCache(updatedMemo: MemoItem): void {
+        const dateStr = updatedMemo.dateString;
+        const cachedMemos = this.memosCache.get(dateStr);
+        
+        if (cachedMemos) {
+            const index = cachedMemos.findIndex(m => 
+                m.filePath === updatedMemo.filePath && 
+                m.lineNumber === updatedMemo.lineNumber
+            );
+            
+            if (index !== -1) {
+                cachedMemos[index] = updatedMemo;
+            }
+        }
     }
 
     /**

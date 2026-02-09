@@ -100,6 +100,96 @@ export class MemosSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
+        // 任务时间追踪设置
+        containerEl.createEl('h3', { text: '⏱️ 任务时间追踪' });
+
+        new Setting(containerEl)
+            .setName('启用任务时间追踪')
+            .setDesc('点击任务复选框时自动切换状态并追踪耗时（参考 obsidian-time-tracking）')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableTimeTracking)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableTimeTracking = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('自动追加时长')
+            .setDesc('完成任务时自动在任务末尾追加耗时（如：25分钟）')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.autoAppendDuration)
+                .onChange(async (value) => {
+                    this.plugin.settings.autoAppendDuration = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        const trackingInfo = containerEl.createDiv({ cls: 'setting-item' });
+        trackingInfo.createEl('p', { 
+            text: '时间追踪说明：',
+            cls: 'setting-item-description'
+        });
+        const trackingList = trackingInfo.createEl('ul');
+        trackingList.createEl('li', { text: '点击复选框：[ ] → DOING → [x]（带时长）' });
+        trackingList.createEl('li', { text: '点击复选框：TODO → DOING → DONE（带时长）' });
+        trackingList.createEl('li', { text: 'DOING 状态会记录开始时间并显示在任务前' });
+        trackingList.createEl('li', { text: '完成任务时自动计算并显示耗时' });
+
+        // 任务列表标签设置
+        containerEl.createEl('h3', { text: '📋 任务列表标签' });
+
+        new Setting(containerEl)
+            .setName('启用任务列表标签')
+            .setDesc('在快捷标签区域显示特殊的任务列表标签（ALL TASKS、TODO LIST、DONE LIST）')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableTaskListTags)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableTaskListTags = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('所有任务标签名称')
+            .setDesc('显示所有任务（包括 markdown 复选框和关键词任务）的标签名称')
+            .addText(text => text
+                .setPlaceholder('ALL TASKS')
+                .setValue(this.plugin.settings.allTasksTagName)
+                .onChange(async (value) => {
+                    this.plugin.settings.allTasksTagName = value || 'ALL TASKS';
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('待办任务标签名称')
+            .setDesc('显示未完成任务的标签名称')
+            .addText(text => text
+                .setPlaceholder('TODO LIST')
+                .setValue(this.plugin.settings.todoListTagName)
+                .onChange(async (value) => {
+                    this.plugin.settings.todoListTagName = value || 'TODO LIST';
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('已完成任务标签名称')
+            .setDesc('显示已完成任务的标签名称')
+            .addText(text => text
+                .setPlaceholder('DONE LIST')
+                .setValue(this.plugin.settings.doneListTagName)
+                .onChange(async (value) => {
+                    this.plugin.settings.doneListTagName = value || 'DONE LIST';
+                    await this.plugin.saveSettings();
+                }));
+
+        const taskListInfo = containerEl.createDiv({ cls: 'setting-item' });
+        taskListInfo.createEl('p', { 
+            text: '任务列表说明：',
+            cls: 'setting-item-description'
+        });
+        const taskListList = taskListInfo.createEl('ul');
+        taskListList.createEl('li', { text: 'ALL TASKS：显示所有任务（[ ]、[x]、TODO、DOING、DONE 等）' });
+        taskListList.createEl('li', { text: 'TODO LIST：显示未完成任务（[ ]、TODO、DOING、NOW、LATER、WAITING）' });
+        taskListList.createEl('li', { text: 'DONE LIST：显示已完成任务（[x]、DONE、CANCELLED）' });
+
         // 标签设置
         containerEl.createEl('h3', { text: '🏷️ 标签' });
 

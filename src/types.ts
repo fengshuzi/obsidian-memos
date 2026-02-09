@@ -22,6 +22,8 @@ export interface MemoItem {
     rawText: string;
     /** 日期字符串 YYYY-MM-DD */
     dateString: string;
+    /** 任务状态（如果是任务） */
+    taskStatus?: TaskStatus;
 }
 
 /** 按日期分组的闪念笔记 */
@@ -72,6 +74,18 @@ export interface MemosPluginSettings {
     keepOpenAfterSubmit: boolean;
     /** 启动时打开闪念页面 */
     openOnStartup: boolean;
+    /** 启用任务时间追踪 */
+    enableTimeTracking: boolean;
+    /** 完成任务时自动追加时长 */
+    autoAppendDuration: boolean;
+    /** 启用特殊任务列表标签 */
+    enableTaskListTags: boolean;
+    /** 所有任务列表标签名称 */
+    allTasksTagName: string;
+    /** 待办任务列表标签名称 */
+    todoListTagName: string;
+    /** 已完成任务列表标签名称 */
+    doneListTagName: string;
 }
 
 /** 默认设置 */
@@ -97,6 +111,12 @@ export const DEFAULT_SETTINGS: MemosPluginSettings = {
     placeholder: '记录此刻的想法...',
     keepOpenAfterSubmit: false,
     openOnStartup: false,
+    enableTimeTracking: true,
+    autoAppendDuration: true,
+    enableTaskListTags: true,
+    allTasksTagName: 'ALL TASKS',
+    todoListTagName: 'TODO LIST',
+    doneListTagName: 'DONE LIST',
 };
 
 /** 解析智能关键词配置 */
@@ -172,8 +192,14 @@ export const MEMOS_VIEW_TYPE = 'memos-view';
 /** 闪念笔记的正则表达式模式 */
 export const MEMO_PATTERN = /^-\s*(\d{2}:\d{2})\s+(.+)$/;
 
-/** 任务前缀的正则表达式 */
-export const TASK_PREFIX_PATTERN = /^(TODO|DONE|DOING|NOW|LATER|WAITING|CANCELLED)\s+/i;
+/** 任务复选框的正则表达式（支持 - [ ] 13:33 内容 格式） */
+export const TASK_CHECKBOX_PATTERN = /^-\s*\[([ xX])\]\s*(\d{2}:\d{2})?\s*(.+)$/;
+
+/** 任务关键词的正则表达式（支持 - TODO 13:33 内容 格式） */
+export const TASK_KEYWORD_PATTERN = /^-\s*(TODO|DONE|DOING|NOW|LATER|WAITING|CANCELLED)\s+(\d{2}:\d{2})?\s*(.+)$/i;
 
 /** 标签的正则表达式 */
 export const TAG_PATTERN = /#([^\s#]+)/g;
+
+/** 任务状态类型 */
+export type TaskStatus = 'TODO' | 'DONE' | 'DOING' | 'NOW' | 'LATER' | 'WAITING' | 'CANCELLED' | 'CHECKBOX_UNCHECKED' | 'CHECKBOX_CHECKED';
