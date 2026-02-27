@@ -30,6 +30,8 @@ export class MemosView extends ItemView {
     private quickTagsSelect: HTMLSelectElement | null = null;
     /** 番茄钟 UI 元素缓存 (memoId -> HTMLElement) */
     private pomodoroUIElements: Map<string, HTMLElement> = new Map();
+    /** 内部修改文件时跳过自动刷新（由 modify 事件触发） */
+    private skipNextAutoRefresh: boolean = false;
 
     constructor(
         leaf: WorkspaceLeaf,
@@ -61,6 +63,18 @@ export class MemosView extends ItemView {
 
     getIcon(): string {
         return 'lightbulb';
+    }
+
+    /**
+     * 检查是否应该跳过自动刷新（用于内部修改文件时）
+     * 调用后会自动重置标志位
+     */
+    shouldSkipAutoRefresh(): boolean {
+        if (this.skipNextAutoRefresh) {
+            this.skipNextAutoRefresh = false;
+            return true;
+        }
+        return false;
     }
 
     async onOpen(): Promise<void> {
@@ -824,40 +838,71 @@ export class MemosView extends ItemView {
 
         const content = await this.app.vault.read(file);
         const lines = content.split('\n');
-        
+
         if (memo.lineNumber < 1 || memo.lineNumber > lines.length) return;
-        
+
         const lineIndex = memo.lineNumber - 1;
         const oldLine = lines[lineIndex];
         const newLine = this.toggleTaskStatusInLine(oldLine);
-        
-        // 修改文件
-        lines[lineIndex] = newLine;
-        await this.app.vault.modify(file, lines.join('\n'));
-        
-        // 解析新的 memo
-        const updatedMemo = this.storage.parseMemoLine(
-            newLine,
-            memo.filePath,
-            memo.lineNumber,
-            memo.dateString
-        );
-        
-        if (updatedMemo) {
-            // 更新缓存
-            this.storage.updateMemoInCache(updatedMemo);
-            
-            // 更新 displayedMemos 中的数据
-            const displayIndex = this.displayedMemos.findIndex(m => 
-                m.filePath === memo.filePath && 
-                m.lineNumber === memo.lineNumber
+
+        // 记录旧状态，用于判断是否需要启动番茄钟
+        const oldStatus = memo.taskStatus;
+
+        // 设置标志位，阻止内部修改文件时的自动刷新
+        this.skipNextAutoRefresh = true;
+
+        try {
+            // 修改文件
+            lines[lineIndex] = newLine;
+            await this.app.vault.modify(file, lines.join('\n'));
+
+            // 解析新的 memo
+            let updatedMemo = this.storage.parseMemoLine(
+                newLine,
+                memo.filePath,
+                memo.lineNumber,
+                memo.dateString
             );
-            if (displayIndex !== -1) {
-                this.displayedMemos[displayIndex] = updatedMemo;
+
+            if (updatedMemo) {
+                // ⭐ 关键修复：保持原来的 ID 不变
+                // 因为 parseMemoLine 会生成新的随机 ID，导致番茄钟找不到 memo
+                updatedMemo.id = memo.id;
+
+                // 更新缓存
+                this.storage.updateMemoInCache(updatedMemo);
+
+                // 更新 displayedMemos 中的数据
+                const displayIndex = this.displayedMemos.findIndex(m =>
+                    m.filePath === memo.filePath &&
+                    m.lineNumber === memo.lineNumber
+                );
+                if (displayIndex !== -1) {
+                    this.displayedMemos[displayIndex] = updatedMemo;
+                }
+
+                // 局部更新卡片 UI
+                this.updateSingleCard(memo.id, updatedMemo);
+
+                // 如果启用了番茄钟，且任务从 TODO/CHECKBOX_UNCHECKED 变为 DOING，自动启动番茄钟
+                if (this.settings.enablePomodoro && updatedMemo.taskStatus === 'DOING') {
+                    const wasTodo = oldStatus === 'TODO' || oldStatus === 'CHECKBOX_UNCHECKED';
+                    if (wasTodo) {
+                        // 使用稳定的 memoId：filePath-lineNumber
+                        const stableMemoId = `${updatedMemo.filePath}-${updatedMemo.lineNumber}`;
+                        console.log('启动番茄钟，stableMemoId:', stableMemoId);
+
+                        setTimeout(() => {
+                            this.pomodoroManager.start(stableMemoId);
+                        }, 200);
+                    }
+                }
             }
-            
-            // 局部更新卡片 UI
-            this.updateSingleCard(memo.id, updatedMemo);
+        } finally {
+            // 延迟重置标志位，确保 modify 事件已经处理完毕
+            setTimeout(() => {
+                this.skipNextAutoRefresh = false;
+            }, 300);
         }
     }
 
@@ -870,6 +915,9 @@ export class MemosView extends ItemView {
         // 找到对应的卡片
         const card = this.memosList.querySelector(`[data-memo-id="${oldMemoId}"]`) as HTMLElement;
         if (!card) return;
+
+        // ⭐ 重要：清理番茄钟 UI 元素的旧引用，因为卡片要被替换了
+        this.pomodoroUIElements.delete(oldMemoId);
 
         // 添加更新动画类
         card.addClass('updating');
@@ -989,7 +1037,7 @@ export class MemosView extends ItemView {
         }
 
         // 更多操作按钮
-        const moreBtn = newCard.createEl('button', { 
+        const moreBtn = newCard.createEl('button', {
             cls: 'memos-card-more',
             attr: { 'aria-label': '更多操作' }
         });
@@ -998,6 +1046,11 @@ export class MemosView extends ItemView {
             e.stopPropagation();
             this.showMemoMenu(newMemo, moreBtn);
         });
+
+        // 番茄钟控制区（仅任务显示）⭐ 重要：updateSingleCard 也需要渲染番茄钟控制区
+        if (this.settings.enablePomodoro && newMemo.taskStatus) {
+            this.renderPomodoroControl(newMemo, newCard);
+        }
 
         // 点击卡片跳转到源文件
         newCard.addEventListener('click', () => {
@@ -1164,20 +1217,6 @@ export class MemosView extends ItemView {
         });
 
         menu.addSeparator();
-
-        // 番茄钟菜单项（仅任务显示）
-        if (this.settings.enablePomodoro && memo.taskStatus) {
-            const session = this.pomodoroManager.getSession(memo.id);
-            if (!session) {
-                menu.addItem((item) => {
-                    item.setTitle('🍅 开始专注')
-                        .onClick(() => {
-                            this.pomodoroManager.start(memo.id);
-                        });
-                });
-                menu.addSeparator();
-            }
-        }
 
         menu.addItem((item) => {
             item.setTitle('删除')
@@ -1357,10 +1396,13 @@ export class MemosView extends ItemView {
      * 渲染番茄钟控制区
      */
     private renderPomodoroControl(memo: MemoItem, card: HTMLElement): void {
-        const session = this.pomodoroManager.getSession(memo.id);
+        // 使用稳定的 memoId：filePath-lineNumber
+        const stableMemoId = `${memo.filePath}-${memo.lineNumber}`;
 
-        // 如果没有会话且没有完成的记录，不显示任何内容（从菜单启动）
-        const completedCount = this.pomodoroManager.getMemoPomodoros(memo.id)
+        const session = this.pomodoroManager.getSession(stableMemoId);
+
+        // 如果没有会话且没有完成的记录，不显示任何内容
+        const completedCount = this.pomodoroManager.getMemoPomodoros(stableMemoId)
             .filter(s => s.state === 'completed').length;
 
         // 只有在存在活跃会话或有完成记录时才创建容器
@@ -1369,7 +1411,7 @@ export class MemosView extends ItemView {
         }
 
         const pomodoroContainer = card.createDiv({ cls: 'memos-pomodoro-control' });
-        this.pomodoroUIElements.set(memo.id, pomodoroContainer);
+        this.pomodoroUIElements.set(stableMemoId, pomodoroContainer);
 
         if (session) {
             // 运行中/暂停状态
@@ -1390,7 +1432,9 @@ export class MemosView extends ItemView {
         });
         startBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            this.pomodoroManager.start(memo.id);
+            // 使用稳定的 memoId：filePath-lineNumber
+            const stableMemoId = `${memo.filePath}-${memo.lineNumber}`;
+            this.pomodoroManager.start(stableMemoId);
         });
     }
 
@@ -1458,7 +1502,9 @@ export class MemosView extends ItemView {
         });
         startBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            this.pomodoroManager.start(memo.id);
+            // 使用稳定的 memoId：filePath-lineNumber
+            const stableMemoId = `${memo.filePath}-${memo.lineNumber}`;
+            this.pomodoroManager.start(stableMemoId);
         });
 
         const statsBtn = container.createEl('button', {
@@ -1507,20 +1553,39 @@ export class MemosView extends ItemView {
      * 番茄钟状态变化事件
      */
     private onPomodoroChange(session: PomodoroSession): void {
-        const memo = this.displayedMemos.find(m => m.id === session.memoId);
-        if (!memo) return;
+        // memoId 格式：filePath-lineNumber
+        // 解析出 filePath 和 lineNumber
+        const lastDashIndex = session.memoId.lastIndexOf('-');
+        if (lastDashIndex === -1) {
+            return;
+        }
+
+        const filePath = session.memoId.substring(0, lastDashIndex);
+        const lineNumber = parseInt(session.memoId.substring(lastDashIndex + 1));
+
+        // 通过 filePath 和 lineNumber 查找 memo
+        const memo = this.displayedMemos.find(m =>
+            m.filePath === filePath && m.lineNumber === lineNumber
+        );
+
+        if (!memo) {
+            return;
+        }
 
         let container = this.pomodoroUIElements.get(session.memoId);
 
         // 如果容器不存在（从菜单启动的情况），需要创建并插入到卡片中
         if (!container) {
-            const card = this.memosList?.querySelector(`[data-memo-id="${session.memoId}"]`) as HTMLElement;
-            if (!card) return;
+            // 使用 memo 的随机 ID 来查找卡片
+            const card = this.memosList?.querySelector(`[data-memo-id="${memo.id}"]`) as HTMLElement;
+            if (!card) {
+                return;
+            }
 
             // 创建番茄钟控制容器并插入到卡片中（在 moreBtn 之前）
             container = card.createDiv({ cls: 'memos-pomodoro-control' });
 
-            // 找到 moreBtn 并将容器插入到它之前
+            // 找到 moreBtn 并将容器插入到 it 之前
             const moreBtn = card.querySelector('.memos-card-more');
             if (moreBtn) {
                 card.insertBefore(container, moreBtn);
@@ -1560,14 +1625,29 @@ export class MemosView extends ItemView {
      * 番茄钟完成事件
      */
     private onPomodoroComplete(session: PomodoroSession): void {
-        const memo = this.displayedMemos.find(m => m.id === session.memoId);
+        // memoId 格式：filePath-lineNumber
+        // 解析出 filePath 和 lineNumber
+        const lastDashIndex = session.memoId.lastIndexOf('-');
+        if (lastDashIndex === -1) {
+            return;
+        }
+
+        const filePath = session.memoId.substring(0, lastDashIndex);
+        const lineNumber = parseInt(session.memoId.substring(lastDashIndex + 1));
+
+        // 通过 filePath 和 lineNumber 查找 memo
+        const memo = this.displayedMemos.find(m =>
+            m.filePath === filePath && m.lineNumber === lineNumber
+        );
+
         if (!memo) return;
 
         let container = this.pomodoroUIElements.get(session.memoId);
 
         // 如果容器不存在（从菜单启动的情况），需要创建并插入到卡片中
         if (!container) {
-            const card = this.memosList?.querySelector(`[data-memo-id="${session.memoId}"]`) as HTMLElement;
+            // 使用 memo 的随机 ID 来查找卡片
+            const card = this.memosList?.querySelector(`[data-memo-id="${memo.id}"]`) as HTMLElement;
             if (!card) return;
 
             // 创建番茄钟控制容器并插入到卡片中（在 moreBtn 之前）

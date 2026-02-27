@@ -60,7 +60,11 @@ export default class MemosPlugin extends Plugin {
         this.registerEvent(
             this.app.vault.on('modify', (file) => {
                 if (file instanceof TFile && this.storage?.onFileChange(file)) {
-                    this.getActiveMemosView()?.refresh();
+                    const view = this.getActiveMemosView();
+                    // 检查是否应该跳过自动刷新（内部修改文件时）
+                    if (view && !view.shouldSkipAutoRefresh()) {
+                        view.refresh();
+                    }
                 }
             })
         );
@@ -68,7 +72,10 @@ export default class MemosPlugin extends Plugin {
         this.registerEvent(
             this.app.vault.on('create', (file) => {
                 if (file instanceof TFile && this.storage?.onFileChange(file)) {
-                    this.getActiveMemosView()?.refresh();
+                    const view = this.getActiveMemosView();
+                    if (view && !view.shouldSkipAutoRefresh()) {
+                        view.refresh();
+                    }
                 }
             })
         );
@@ -76,7 +83,10 @@ export default class MemosPlugin extends Plugin {
         this.registerEvent(
             this.app.vault.on('delete', (file) => {
                 if (file instanceof TFile && this.storage?.onFileChange(file)) {
-                    this.getActiveMemosView()?.refresh();
+                    const view = this.getActiveMemosView();
+                    if (view && !view.shouldSkipAutoRefresh()) {
+                        view.refresh();
+                    }
                 }
             })
         );
@@ -85,7 +95,10 @@ export default class MemosPlugin extends Plugin {
         this.registerEvent(
             this.app.metadataCache.on('changed', (file) => {
                 if (file instanceof TFile && this.storage?.onFileChange(file)) {
-                    this.getActiveMemosView()?.refresh();
+                    const view = this.getActiveMemosView();
+                    if (view && !view.shouldSkipAutoRefresh()) {
+                        view.refresh();
+                    }
                 }
             })
         );
