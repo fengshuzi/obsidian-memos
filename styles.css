@@ -928,3 +928,118 @@
 .memos-content::-webkit-scrollbar-thumb:hover {
     background: var(--text-faint);
 }
+
+/* ============================================
+   番茄钟样式
+   ============================================ */
+
+/* 番茄钟控制区 */
+.memos-pomodoro-control {
+    margin-top: 8px;
+    padding: 6px 10px;
+    background: var(--background-secondary);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+}
+
+/* 开始按钮 */
+.memos-pomodoro-start {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border: none;
+    padding: 4px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background 0.15s ease;
+}
+
+.memos-pomodoro-start:hover {
+    filter: brightness(1.1);
+}
+
+/* 运行状态 */
+.memos-pomodoro-active {
+    background: rgba(230, 126, 34, 0.1);
+    border-left: 3px solid #e67e22;
+}
+
+.memos-pomodoro-icon {
+    font-size: 14px;
+}
+
+/* 倒计时显示 */
+.memos-pomodoro-timer {
+    font-family: var(--font-monospace);
+    font-size: 14px;
+    color: #e67e22;
+    font-weight: 600;
+    min-width: 50px;
+}
+
+/* 控制按钮组 */
+.memos-pomodoro-controls {
+    display: flex;
+    gap: 4px;
+    margin-left: auto;
+}
+
+.memos-pomodoro-btn {
+    background: transparent;
+    border: 1px solid var(--background-modifier-border);
+    padding: 2px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 11px;
+    color: var(--text-muted);
+    transition: all 0.15s ease;
+}
+
+.memos-pomodoro-btn:hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.memos-pomodoro-stop {
+    color: #ef4444;
+}
+
+.memos-pomodoro-stop:hover {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: #ef4444;
+}
+
+/* 小按钮（用于完成状态） */
+.memos-pomodoro-btn-small {
+    background: transparent;
+    border: 1px solid var(--background-modifier-border);
+    padding: 2px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 11px;
+    color: var(--text-muted);
+    transition: all 0.15s ease;
+}
+
+.memos-pomodoro-btn-small:hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+    border-color: var(--interactive-accent);
+}
+
+/* 完成状态 */
+.memos-pomodoro-completed {
+    background: rgba(16, 185, 129, 0.1);
+    border-left: 3px solid #10b981;
+}
+
+.memos-pomodoro-completed-text {
+    color: var(--text-success);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}

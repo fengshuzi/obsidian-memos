@@ -9,6 +9,7 @@ import { MemosStorage } from './storage';
 import { MemosView } from './MemosView';
 import { MemoInputModal } from './InputModal';
 import { MemosSettingTab } from './settings';
+import { PomodoroManager } from './pomodoro';
 
 // 自定义图标
 const MEMOS_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
@@ -16,6 +17,7 @@ const MEMOS_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" 
 export default class MemosPlugin extends Plugin {
     settings: MemosPluginSettings = DEFAULT_SETTINGS;
     storage: MemosStorage | null = null;
+    pomodoroManager: PomodoroManager | null = null;
 
     async onload(): Promise<void> {
         console.log('加载闪念笔记插件');
@@ -26,13 +28,21 @@ export default class MemosPlugin extends Plugin {
         // 初始化存储
         this.storage = new MemosStorage(this.app, this.settings);
 
+        // 初始化番茄钟管理器
+        this.pomodoroManager = new PomodoroManager(
+            this,
+            this.settings.pomodoroDuration,
+            this.settings.pomodoroSoundEnabled
+        );
+        await this.pomodoroManager.load();
+
         // 注册自定义图标
         addIcon('memos', MEMOS_ICON);
 
         // 注册视图
         this.registerView(
             MEMOS_VIEW_TYPE,
-            (leaf) => new MemosView(leaf, this, this.storage!, this.settings)
+            (leaf) => new MemosView(leaf, this, this.storage!, this.settings, this.pomodoroManager!)
         );
 
         // 添加侧边栏按钮
@@ -90,6 +100,7 @@ export default class MemosPlugin extends Plugin {
 
     onunload(): void {
         console.log('卸载闪念笔记插件');
+        this.pomodoroManager?.dispose();
     }
 
     /**
@@ -218,6 +229,14 @@ export default class MemosPlugin extends Plugin {
         const view = this.getActiveMemosView();
         if (view) {
             view.updateSettings(this.settings);
+        }
+
+        // 更新番茄钟设置
+        if (this.pomodoroManager) {
+            this.pomodoroManager.updateSettings(
+                this.settings.pomodoroDuration,
+                this.settings.pomodoroSoundEnabled
+            );
         }
     }
 }

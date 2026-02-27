@@ -86,6 +86,12 @@ export interface MemosPluginSettings {
     todoListTagName: string;
     /** 已完成任务列表标签名称 */
     doneListTagName: string;
+    /** 番茄钟时长（分钟） */
+    pomodoroDuration: number;
+    /** 番茄钟完成时播放提示音 */
+    pomodoroSoundEnabled: boolean;
+    /** 启用番茄钟功能 */
+    enablePomodoro: boolean;
 }
 
 /** 默认设置 */
@@ -117,6 +123,9 @@ export const DEFAULT_SETTINGS: MemosPluginSettings = {
     allTasksTagName: 'ALL TASKS',
     todoListTagName: 'TODO LIST',
     doneListTagName: 'DONE LIST',
+    pomodoroDuration: 25,
+    pomodoroSoundEnabled: true,
+    enablePomodoro: true,
 };
 
 /** 解析智能关键词配置 */
@@ -203,3 +212,44 @@ export const TAG_PATTERN = /#([^\s#]+)/g;
 
 /** 任务状态类型 */
 export type TaskStatus = 'TODO' | 'DONE' | 'DOING' | 'NOW' | 'LATER' | 'WAITING' | 'CANCELLED' | 'CHECKBOX_UNCHECKED' | 'CHECKBOX_CHECKED';
+
+// ============ 番茄钟相关类型 ============
+
+/** 番茄钟状态 */
+export type PomodoroState = 'idle' | 'running' | 'paused' | 'completed';
+
+/** 单个番茄钟会话 */
+export interface PomodoroSession {
+    /** 番茄钟唯一ID */
+    id: string;
+    /** 关联的 memo ID */
+    memoId: string;
+    /** 开始时间戳 */
+    startTime: number;
+    /** 结束时间戳（完成时） */
+    endTime?: number;
+    /** 计划时长（分钟） */
+    plannedMinutes: number;
+    /** 实际时长（分钟） */
+    actualMinutes?: number;
+    /** 状态 */
+    state: PomodoroState;
+    /** 剩余秒数（运行中/暂停时） */
+    remainingSeconds?: number;
+    /** 暂停时累积的秒数 */
+    pausedAccumulatedSeconds?: number;
+}
+
+/** 番茄钟统计数据 */
+export interface PomodoroStats {
+    /** 总番茄数 */
+    totalPomodoros: number;
+    /** 总专注时长（分钟） */
+    totalFocusMinutes: number;
+    /** 今日番茄数 */
+    todayPomodoros: number;
+    /** 今日专注时长（分钟） */
+    todayFocusMinutes: number;
+    /** 按标签分组的统计 */
+    byTag: { [tag: string]: { count: number; minutes: number } };
+}
