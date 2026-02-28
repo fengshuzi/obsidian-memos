@@ -1504,7 +1504,10 @@ export class MemosView extends ItemView {
         const completedCount = this.pomodoroManager.getMemoPomodoros(stableMemoId)
             .filter(s => s.state === 'completed').length;
 
-        if (!session && completedCount === 0) {
+        const isDoing = memo.taskStatus === 'DOING';
+
+        // 没有活跃 session、没有完成记录、也不是 DOING 状态 → 不渲染
+        if (!session && completedCount === 0 && !isDoing) {
             return;
         }
 
@@ -1513,9 +1516,10 @@ export class MemosView extends ItemView {
 
         if (session && (session.state === 'short_break' || session.state === 'long_break')) {
             this.renderPomodoroBreak(pomodoroContainer, memo, session);
-        } else if (session) {
+        } else if (session && (session.state === 'running' || session.state === 'paused')) {
             this.renderPomodoroActive(pomodoroContainer, memo, session);
-        } else if (completedCount > 0) {
+        } else {
+            // 无活跃 session：显示已完成的 🍅 + 开始按钮（DOING 时）
             this.renderPomodoroCompleted(pomodoroContainer, memo, completedCount);
         }
     }
@@ -1589,15 +1593,30 @@ export class MemosView extends ItemView {
     private renderPomodoroCompleted(container: HTMLElement, memo: MemoItem, count: number): void {
         container.addClass('memos-pomodoro-completed');
 
-        const tomatoes = container.createSpan({ cls: 'memos-pomodoro-tomatoes' });
-        for (let i = 0; i < count; i++) {
-            const t = tomatoes.createSpan({ cls: 'memos-pomodoro-tomato', text: '🍅' });
-            t.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.plugin.activatePomodoroStats();
-            });
+        // 已完成的番茄图标
+        if (count > 0) {
+            const tomatoes = container.createSpan({ cls: 'memos-pomodoro-tomatoes' });
+            for (let i = 0; i < count; i++) {
+                const t = tomatoes.createSpan({ cls: 'memos-pomodoro-tomato', text: '🍅' });
+                t.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.plugin.activatePomodoroStats();
+                });
+            }
         }
 
+        // DOING 状态的任务：显示开始按钮，方便启动下一个番茄
+        if (memo.taskStatus === 'DOING') {
+            const startBtn = container.createEl('button', {
+                cls: 'memos-pomodoro-start',
+                text: count > 0 ? '🍅 下一个' : '🍅 开始专注',
+            });
+            startBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const stableMemoId = `${memo.filePath}-${memo.lineNumber}`;
+                this.pomodoroManager.start(stableMemoId);
+            });
+        }
     }
 
     /**
@@ -1786,7 +1805,7 @@ export class MemosView extends ItemView {
         } else {
             const completedCount = this.pomodoroManager.getMemoPomodoros(session.memoId)
                 .filter(s => s.state === 'completed').length;
-            if (completedCount > 0) {
+            if (completedCount > 0 || memo.taskStatus === 'DOING') {
                 this.renderPomodoroCompleted(container, memo, completedCount);
             } else {
                 container.remove();
