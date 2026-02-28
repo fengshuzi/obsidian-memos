@@ -183,20 +183,31 @@ export class PomodoroManager {
         if (save) {
             this.finalizePausedTime(session);
 
-            session.state = 'completed';
             session.endTime = Date.now();
 
             const totalElapsedSeconds = Math.floor(
                 (session.endTime - session.startTime) / 1000
             );
             const actualSeconds = totalElapsedSeconds - (session.pausedAccumulatedSeconds || 0);
-            session.actualMinutes = Math.max(0, Math.round(actualSeconds / 60));
+
+            // 不足 60 秒视为简单跟进/提醒任务，丢弃记录
+            if (actualSeconds < 60) {
+                this.sessions.delete(memoId);
+                this.allSessions = this.allSessions.filter(s => s.id !== session.id);
+                this.save();
+                this.notifyChange(session);
+                this.checkAndStopTimer();
+                new Notice('⏱ 专注不足 1 分钟，不计入番茄记录');
+                return;
+            }
+
+            session.state = 'completed';
+            session.actualMinutes = Math.max(1, Math.round(actualSeconds / 60));
 
             const count = (this.consecutiveCounts.get(memoId) || 0) + 1;
             this.consecutiveCounts.set(memoId, count);
             session.consecutiveCount = count;
 
-            // 从活跃会话中移除（不进入休息阶段，因为是手动停止）
             this.sessions.delete(memoId);
         } else {
             this.sessions.delete(memoId);
@@ -460,14 +471,26 @@ export class PomodoroManager {
     }
 
     /**
-     * 专注阶段 tick
+     * 基于真实时间计算剩余秒数
+     * 解决 setInterval 在后台被节流/暂停导致计时漂移的问题
+     */
+    private calcRemainingSeconds(session: PomodoroSession): number {
+        const now = Date.now();
+        const elapsedMs = now - session.startTime;
+        const pausedMs = (session.pausedAccumulatedSeconds || 0) * 1000;
+        const activeMs = elapsedMs - pausedMs;
+        const totalMs = session.plannedMinutes * 60 * 1000;
+        return Math.max(0, Math.ceil((totalMs - activeMs) / 1000));
+    }
+
+    /**
+     * 专注阶段 tick — 基于真实时间
      */
     private tickFocus(session: PomodoroSession): void {
-        if (session.remainingSeconds === undefined) return;
+        const remaining = this.calcRemainingSeconds(session);
+        session.remainingSeconds = remaining;
 
-        session.remainingSeconds--;
-
-        if (session.remainingSeconds <= 0) {
+        if (remaining <= 0) {
             this.completeSession(session);
         } else {
             this.notifyChange(session);
@@ -475,14 +498,16 @@ export class PomodoroManager {
     }
 
     /**
-     * 休息阶段 tick
+     * 休息阶段 tick — 基于真实时间
+     * 休息 session 没有暂停机制，直接用 startTime + breakMinutes 计算
      */
     private tickBreak(session: PomodoroSession): void {
-        if (session.remainingSeconds === undefined) return;
+        const now = Date.now();
+        const breakMs = (session.breakMinutes || session.plannedMinutes) * 60 * 1000;
+        const remaining = Math.max(0, Math.ceil((breakMs - (now - session.startTime)) / 1000));
+        session.remainingSeconds = remaining;
 
-        session.remainingSeconds--;
-
-        if (session.remainingSeconds <= 0) {
+        if (remaining <= 0) {
             this.completeBreak(session);
         } else {
             this.notifyChange(session);
