@@ -206,6 +206,7 @@ export function parseQuickTags(quickTagsStr: string): QuickTag[] {
 
 /** 视图类型 */
 export const MEMOS_VIEW_TYPE = 'memos-view';
+export const POMODORO_STATS_VIEW_TYPE = 'pomodoro-stats-view';
 
 /** 闪念笔记的正则表达式模式 */
 export const MEMO_PATTERN = /^-\s*(\d{2}:\d{2})\s+(.+)$/;

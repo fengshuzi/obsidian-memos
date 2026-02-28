@@ -1611,7 +1611,7 @@ export class MemosView extends ItemView {
         });
         statsBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            this.showPomodoroStats(memo);
+            this.plugin.activatePomodoroStats();
         });
     }
 

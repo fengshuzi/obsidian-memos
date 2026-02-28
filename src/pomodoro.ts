@@ -291,6 +291,69 @@ export class PomodoroManager {
         return stats;
     }
 
+    // ============ 数据管理 ============
+
+    /**
+     * 获取所有历史会话（供侧边栏展示）
+     */
+    getAllSessions(): PomodoroSession[] {
+        return [...this.allSessions];
+    }
+
+    /**
+     * 删除单条历史记录
+     */
+    deleteSession(sessionId: string): void {
+        this.allSessions = this.allSessions.filter(s => s.id !== sessionId);
+        // 同时从活跃 sessions 中移除（如果存在）
+        for (const [memoId, session] of this.sessions.entries()) {
+            if (session.id === sessionId) {
+                this.sessions.delete(memoId);
+                break;
+            }
+        }
+        this.save();
+        this.notifyDataChange();
+    }
+
+    /**
+     * 批量删除历史记录
+     */
+    deleteSessions(sessionIds: Set<string>): void {
+        this.allSessions = this.allSessions.filter(s => !sessionIds.has(s.id));
+        for (const [memoId, session] of this.sessions.entries()) {
+            if (sessionIds.has(session.id)) {
+                this.sessions.delete(memoId);
+            }
+        }
+        this.save();
+        this.notifyDataChange();
+    }
+
+    /**
+     * 清除所有历史数据
+     */
+    clearAllData(): void {
+        this.allSessions = [];
+        this.sessions.clear();
+        this.consecutiveCounts.clear();
+        this.checkAndStopTimer();
+        this.save();
+        this.notifyDataChange();
+    }
+
+    /**
+     * 通知数据变化（供侧边栏刷新）
+     */
+    private notifyDataChange(): void {
+        for (const listener of this.listeners) {
+            if (listener.onSessionChange) {
+                // 发送一个空信号触发 UI 刷新
+                listener.onSessionChange(undefined as any);
+            }
+        }
+    }
+
     addListener(listener: PomodoroEventListener): void {
         this.listeners.add(listener);
     }

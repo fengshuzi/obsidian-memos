@@ -1121,3 +1121,299 @@
     filter: grayscale(0.2);
     pointer-events: auto;
 }
+
+/* ============================================
+   番茄钟统计侧边栏
+   ============================================ */
+
+.pomodoro-stats-container {
+    padding: 12px;
+    font-size: 13px;
+    overflow-y: auto;
+}
+
+/* 统计概览 */
+.pomo-stats-overview {
+    margin-bottom: 16px;
+}
+
+.pomo-stats-row {
+    margin-bottom: 12px;
+}
+
+.pomo-stats-row h3 {
+    font-size: 13px;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+    color: var(--text-muted);
+}
+
+.pomo-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+}
+
+.pomo-stat-card {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: var(--background-secondary);
+    border-radius: 8px;
+}
+
+.pomo-stat-icon {
+    font-size: 18px;
+}
+
+.pomo-stat-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.pomo-stat-value {
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--text-normal);
+}
+
+.pomo-stat-label {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.pomo-stats-today {
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+/* 工具栏 */
+.pomo-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--background-modifier-border);
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+.pomo-filter-group {
+    display: flex;
+    gap: 4px;
+}
+
+.pomo-filter-btn {
+    background: transparent;
+    border: 1px solid var(--background-modifier-border);
+    padding: 3px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text-muted);
+    transition: all 0.15s ease;
+}
+
+.pomo-filter-btn:hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.pomo-filter-active {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border-color: var(--interactive-accent);
+}
+
+.pomo-filter-active:hover {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    filter: brightness(1.1);
+}
+
+.pomo-toolbar-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.pomo-btn {
+    padding: 3px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    border: none;
+    transition: all 0.15s ease;
+}
+
+.pomo-btn-danger {
+    background: #ef4444;
+    color: white;
+}
+
+.pomo-btn-danger:hover {
+    background: #dc2626;
+}
+
+.pomo-btn-danger-outline {
+    background: transparent;
+    color: #ef4444;
+    border: 1px solid #ef4444;
+}
+
+.pomo-btn-danger-outline:hover {
+    background: rgba(239, 68, 68, 0.1);
+}
+
+/* 会话列表 */
+.pomo-session-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.pomo-session-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 4px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--background-modifier-border);
+    position: sticky;
+    top: 0;
+    background: var(--background-primary);
+    z-index: 1;
+}
+
+.pomo-session-header input[type="checkbox"] {
+    margin: 0;
+    flex-shrink: 0;
+}
+
+.pomo-session-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 4px;
+    border-bottom: 1px solid var(--background-modifier-border-hover);
+    transition: background 0.1s ease;
+}
+
+.pomo-session-row:hover {
+    background: var(--background-secondary);
+}
+
+.pomo-session-row input[type="checkbox"] {
+    margin: 0;
+    flex-shrink: 0;
+}
+
+.pomo-col-time {
+    flex: 0 0 90px;
+    font-family: var(--font-monospace);
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.pomo-col-memo {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+}
+
+.pomo-col-duration {
+    flex: 0 0 70px;
+    font-size: 12px;
+    text-align: right;
+    color: var(--text-muted);
+}
+
+.pomo-col-state {
+    flex: 0 0 70px;
+    text-align: center;
+}
+
+.pomo-col-action {
+    flex: 0 0 36px;
+    text-align: center;
+}
+
+.pomo-sortable {
+    cursor: pointer;
+    user-select: none;
+}
+
+.pomo-sortable:hover {
+    color: var(--text-normal);
+}
+
+/* 状态徽章 */
+.pomo-state-badge {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    white-space: nowrap;
+}
+
+.pomo-state-completed {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+}
+
+.pomo-state-running {
+    background: rgba(230, 126, 34, 0.15);
+    color: #e67e22;
+}
+
+.pomo-state-paused {
+    background: rgba(107, 114, 128, 0.15);
+    color: #6b7280;
+}
+
+.pomo-state-idle {
+    background: rgba(107, 114, 128, 0.1);
+    color: #9ca3af;
+}
+
+.pomo-state-break {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+}
+
+/* 行内删除按钮 */
+.pomo-row-delete {
+    background: transparent;
+    border: none;
+    padding: 2px;
+    cursor: pointer;
+    color: var(--text-faint);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+}
+
+.pomo-row-delete:hover {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.pomo-row-delete svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* 空状态 */
+.pomo-empty {
+    text-align: center;
+    padding: 32px 16px;
+    color: var(--text-faint);
+    font-size: 13px;
+}

@@ -4,12 +4,13 @@
  */
 
 import { Plugin, WorkspaceLeaf, addIcon, TFile } from 'obsidian';
-import { MemosPluginSettings, DEFAULT_SETTINGS, MEMOS_VIEW_TYPE } from './types';
+import { MemosPluginSettings, DEFAULT_SETTINGS, MEMOS_VIEW_TYPE, POMODORO_STATS_VIEW_TYPE } from './types';
 import { MemosStorage } from './storage';
 import { MemosView } from './MemosView';
 import { MemoInputModal } from './InputModal';
 import { MemosSettingTab } from './settings';
 import { PomodoroManager } from './pomodoro';
+import { PomodoroStatsView } from './PomodoroStatsView';
 
 // 自定义图标
 const MEMOS_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
@@ -46,6 +47,12 @@ export default class MemosPlugin extends Plugin {
         this.registerView(
             MEMOS_VIEW_TYPE,
             (leaf) => new MemosView(leaf, this, this.storage!, this.settings, this.pomodoroManager!)
+        );
+
+        // 注册番茄钟统计视图
+        this.registerView(
+            POMODORO_STATS_VIEW_TYPE,
+            (leaf) => new PomodoroStatsView(leaf, this.pomodoroManager!)
         );
 
         // 添加侧边栏按钮
@@ -166,6 +173,15 @@ export default class MemosPlugin extends Plugin {
                 }
             },
         });
+
+        // 打开番茄钟统计面板
+        this.addCommand({
+            id: 'open-pomodoro-stats',
+            name: '打开番茄钟统计',
+            callback: () => {
+                this.activatePomodoroStats();
+            },
+        });
     }
 
     /**
@@ -184,6 +200,30 @@ export default class MemosPlugin extends Plugin {
                 type: MEMOS_VIEW_TYPE,
                 active: true,
             });
+        }
+
+        if (leaf) {
+            workspace.revealLeaf(leaf);
+        }
+    }
+
+    /**
+     * 激活番茄钟统计侧边栏
+     */
+    async activatePomodoroStats(): Promise<void> {
+        const { workspace } = this.app;
+
+        let leaf = workspace.getLeavesOfType(POMODORO_STATS_VIEW_TYPE)[0];
+
+        if (!leaf) {
+            const rightLeaf = workspace.getRightLeaf(false);
+            if (rightLeaf) {
+                await rightLeaf.setViewState({
+                    type: POMODORO_STATS_VIEW_TYPE,
+                    active: true,
+                });
+                leaf = rightLeaf;
+            }
         }
 
         if (leaf) {
