@@ -451,23 +451,21 @@ export class PomodoroManager {
 
     /**
      * 每秒更新
+     * 先快照再遍历，避免遍历过程中修改 Map 导致状态丢失
      */
     private tick(): void {
-        let hasActive = false;
+        const snapshot = Array.from(this.sessions.values());
 
-        for (const session of this.sessions.values()) {
+        for (const session of snapshot) {
             if (session.state === 'running') {
-                hasActive = true;
                 this.tickFocus(session);
             } else if (session.state === 'short_break' || session.state === 'long_break') {
-                hasActive = true;
                 this.tickBreak(session);
             }
         }
 
-        if (!hasActive) {
-            this.checkAndStopTimer();
-        }
+        // tick 处理完后再检查是否还有活跃的（此时 startBreak 等新增的 session 已在 Map 中）
+        this.checkAndStopTimer();
     }
 
     /**
@@ -606,14 +604,13 @@ export class PomodoroManager {
         this.sessions.delete(memoId);
         this.save();
 
-        // 触发休息结束事件
         for (const listener of this.listeners) {
             if (listener.onBreakEnd) {
                 listener.onBreakEnd(session);
             }
         }
         this.notifyChange(session);
-        this.checkAndStopTimer();
+        // 定时器由 tick() 末尾统一检查停止
 
         new Notice('⏰ 休息结束！准备开始下一个番茄吧');
     }
