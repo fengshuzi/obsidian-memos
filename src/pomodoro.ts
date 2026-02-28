@@ -1,29 +1,55 @@
 /**
- * 番茄钟管理器
- * 管理所有番茄钟会话的创建、暂停、恢复、停止和持久化
- * 支持完整的番茄工作法循环：专注 → 短休息 → 专注 → ... → 长休息
+ * 番茄钟管理器（纯逻辑层，不依赖 UI）
+ *
+ * ## 架构概览
+ * - 本模块是独立的番茄工作法引擎，通过事件监听器模式与 MemosView 通信
+ * - 不直接操作 DOM，所有 UI 更新都通过 PomodoroEventListener 回调
+ *
+ * ## 核心概念
+ * - **stableMemoId**: 格式为 `${filePath}-${lineNumber}`，用于关联番茄钟和 memo
+ *   注意：这不是 MemoItem.id（随机 UUID），而是基于文件路径和行号的稳定标识
+ *   外部编辑可能改变行号导致失效，由 MemosView.reconcilePomodoroSessions() 修复
+ *
+ * ## 数据模型（双层结构）
+ * - `sessions` Map: 活跃会话，key 为 stableMemoId → 快速查找某个 memo 的当前番茄钟
+ * - `allSessions` 数组: 全部历史记录（含已完成）→ 统计和历史展示
+ * - 两者通过 session.id 关联，session.memoId 存储 stableMemoId
+ *
+ * ## 状态机
+ * ```
+ * idle → running ⇄ paused → running → completed → short_break/long_break → idle
+ *                                  ↘ stop(cancel) → idle
+ * ```
+ *
+ * ## 持久化
+ * 通过 plugin.saveData/loadData 存储到 Obsidian 的 data.json
+ * 重启后 running 状态自动转为 paused，休息状态直接丢弃
  */
 
 import { Notice } from 'obsidian';
 import { PomodoroSession, PomodoroState, PomodoroStats, PomodoroPauseRecord } from './types';
 
-/** 番茄钟事件监听器 */
+/** MemosView 通过此接口监听番茄钟状态变化，驱动 UI 更新 */
 export interface PomodoroEventListener {
-    /** 番茄钟状态变化 */
+    /** 每秒 tick 或状态变化时触发（更新倒计时、切换按钮等） */
     onSessionChange?: (session: PomodoroSession) => void;
-    /** 番茄钟完成（专注阶段完成） */
+    /** 专注阶段自然完成时触发（更新已完成番茄数） */
     onSessionComplete?: (session: PomodoroSession) => void;
-    /** 休息开始 */
+    /** 进入休息阶段时触发 */
     onBreakStart?: (session: PomodoroSession) => void;
-    /** 休息结束 */
+    /** 休息结束时触发 */
     onBreakEnd?: (session: PomodoroSession) => void;
 }
 
 export class PomodoroManager {
+    /** 活跃会话表：stableMemoId → session，每个 memo 最多一个活跃会话 */
     private sessions: Map<string, PomodoroSession> = new Map();
+    /** 全部历史记录（含已完成的），用于统计和侧边栏展示 */
     private allSessions: PomodoroSession[] = [];
+    /** 全局 1 秒定时器句柄，无活跃 session 时自动停止 */
     private timerInterval: number | null = null;
     private listeners: Set<PomodoroEventListener> = new Set();
+    /** 宿主插件实例，用于 saveData/loadData 持久化 */
     private plugin: any;
 
     private duration: number = 25;
@@ -32,7 +58,7 @@ export class PomodoroManager {
     private longBreakInterval: number = 4;
     private soundEnabled: boolean = true;
 
-    /** 每个 memo 的连续完成计数（用于判断长休息），不持久化 */
+    /** 每个 memo 的连续完成计数（用于判断长休息），仅运行时维护不持久化 */
     private consecutiveCounts: Map<string, number> = new Map();
 
     constructor(
@@ -51,8 +77,11 @@ export class PomodoroManager {
         this.longBreakInterval = longBreakInterval;
     }
 
+    // ============ 会话生命周期：start / pause / resume / stop / skipBreak ============
+
     /**
      * 启动番茄钟
+     * @param memoId stableMemoId 格式：`${filePath}-${lineNumber}`
      */
     start(memoId: string, duration?: number): PomodoroSession | null {
         const existing = this.sessions.get(memoId);
@@ -161,7 +190,8 @@ export class PomodoroManager {
     }
 
     /**
-     * 停止番茄钟（支持专注阶段和休息阶段）
+     * 停止番茄钟
+     * @param save true=完成并记录到历史（DOING→DONE 时调用）; false=取消丢弃
      */
     stop(sessionId: string, save: boolean = false): void {
         const session = this.findSession(sessionId);
@@ -252,23 +282,19 @@ export class PomodoroManager {
         new Notice('⏭ 休息已跳过');
     }
 
-    /**
-     * 获取 memo 的当前番茄钟会话
-     */
+    // ============ 查询接口 ============
+
+    /** 获取某个 memo 的活跃番茄钟（参数为 stableMemoId） */
     getSession(memoId: string): PomodoroSession | undefined {
         return this.sessions.get(memoId);
     }
 
-    /**
-     * 获取 memo 的所有番茄钟记录
-     */
+    /** 获取某个 memo 的所有历史记录（含已完成，参数为 stableMemoId） */
     getMemoPomodoros(memoId: string): PomodoroSession[] {
         return this.allSessions.filter(s => s.memoId === memoId);
     }
 
-    /**
-     * 获取运行中的番茄钟（包含休息中的）
-     */
+    /** 获取所有活跃会话（running / paused / 休息中） */
     getActivePomodoros(): PomodoroSession[] {
         return Array.from(this.sessions.values()).filter(
             s => s.state === 'running' || s.state === 'paused'
@@ -277,8 +303,34 @@ export class PomodoroManager {
     }
 
     /**
-     * 获取统计数据
+     * 重映射 session 的 memoId
+     * 场景：外部工具（如 Alfred）编辑文件导致行号偏移，stableMemoId 失效
+     * 由 MemosView.reconcilePomodoroSessions() 在刷新时调用
      */
+    remapSessionMemoId(oldMemoId: string, newMemoId: string): void {
+        const session = this.sessions.get(oldMemoId);
+        if (!session) return;
+
+        this.sessions.delete(oldMemoId);
+        session.memoId = newMemoId;
+        this.sessions.set(newMemoId, session);
+
+        for (const s of this.allSessions) {
+            if (s.memoId === oldMemoId) {
+                s.memoId = newMemoId;
+            }
+        }
+
+        const count = this.consecutiveCounts.get(oldMemoId);
+        if (count !== undefined) {
+            this.consecutiveCounts.delete(oldMemoId);
+            this.consecutiveCounts.set(newMemoId, count);
+        }
+
+        this.save();
+    }
+
+    /** 获取汇总统计（今日/全部的番茄数和专注时长） */
     getStats(): PomodoroStats {
         const now = new Date();
         const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
@@ -302,11 +354,9 @@ export class PomodoroManager {
         return stats;
     }
 
-    // ============ 数据管理 ============
+    // ============ 数据管理（侧边栏 PomodoroStatsView 使用） ============
 
-    /**
-     * 获取所有历史会话（供侧边栏展示）
-     */
+    /** 返回全部历史会话的浅拷贝 */
     getAllSessions(): PomodoroSession[] {
         return [...this.allSessions];
     }
@@ -353,13 +403,10 @@ export class PomodoroManager {
         this.notifyDataChange();
     }
 
-    /**
-     * 通知数据变化（供侧边栏刷新）
-     */
+    /** 通知所有监听器数据已变化（批量删除/清空后触发 UI 刷新） */
     private notifyDataChange(): void {
         for (const listener of this.listeners) {
             if (listener.onSessionChange) {
-                // 发送一个空信号触发 UI 刷新
                 listener.onSessionChange(undefined as any);
             }
         }
@@ -373,9 +420,9 @@ export class PomodoroManager {
         this.listeners.delete(listener);
     }
 
-    /**
-     * 保存到持久化存储
-     */
+    // ============ 持久化（Obsidian data.json） ============
+
+    /** 序列化 Map 和数组，写入 plugin.saveData */
     async save(): Promise<void> {
         try {
             const data = {
@@ -390,7 +437,8 @@ export class PomodoroManager {
     }
 
     /**
-     * 从持久化存储加载
+     * 从持久化存储恢复状态
+     * 重启后处理：running → paused（需用户手动继续），休息中 → 直接丢弃
      */
     async load(): Promise<void> {
         try {
@@ -447,11 +495,11 @@ export class PomodoroManager {
         this.longBreakInterval = longBreakInterval;
     }
 
-    // ============ 定时器与核心循环 ============
+    // ============ 定时器与核心循环（1 秒 tick） ============
 
     /**
-     * 每秒更新
-     * 先快照再遍历，避免遍历过程中修改 Map 导致状态丢失
+     * 全局 1 秒心跳。先快照再遍历，因为 tickFocus 可能触发 completeSession →
+     * startBreak 修改 sessions Map，直接遍历 Map 会导致迭代器失效
      */
     private tick(): void {
         const snapshot = Array.from(this.sessions.values());
@@ -469,8 +517,9 @@ export class PomodoroManager {
     }
 
     /**
-     * 基于真实时间计算剩余秒数
-     * 解决 setInterval 在后台被节流/暂停导致计时漂移的问题
+     * 基于挂钟时间计算剩余秒数，而非累加 tick 次数
+     * 原因：浏览器/Electron 在后台标签页会节流 setInterval，
+     * 累加方式会导致计时越来越慢。公式：remaining = planned - (now - start - paused)
      */
     private calcRemainingSeconds(session: PomodoroSession): number {
         const now = Date.now();
@@ -513,7 +562,8 @@ export class PomodoroManager {
     }
 
     /**
-     * 专注阶段自然完成 → 自动进入休息
+     * 专注阶段倒计时归零时调用
+     * 流程：标记完成 → 通知监听器 → 移出活跃表 → 自动进入休息阶段
      */
     private completeSession(session: PomodoroSession): void {
         session.state = 'completed';
@@ -551,7 +601,8 @@ export class PomodoroManager {
     }
 
     /**
-     * 开始休息阶段
+     * 开始休息阶段（completeSession 自动调用）
+     * 根据 completedCount % longBreakInterval 决定短休息还是长休息
      */
     private startBreak(memoId: string, completedCount: number): void {
         const isLongBreak = completedCount > 0 && completedCount % this.longBreakInterval === 0;
@@ -615,8 +666,9 @@ export class PomodoroManager {
         new Notice('⏰ 休息结束！准备开始下一个番茄吧');
     }
 
-    // ============ 定时器管理 ============
+    // ============ 全局定时器管理（单例，按需启停） ============
 
+    /** 确保全局 1 秒定时器正在运行（幂等） */
     private startTimer(): void {
         if (this.timerInterval !== null) {
             return;
@@ -627,6 +679,7 @@ export class PomodoroManager {
         }, 1000);
     }
 
+    /** 无活跃 session 时停止定时器，节省资源 */
     private checkAndStopTimer(): void {
         const hasActive = Array.from(this.sessions.values()).some(
             s => s.state === 'running' || s.state === 'short_break' || s.state === 'long_break'
@@ -638,8 +691,9 @@ export class PomodoroManager {
         }
     }
 
-    // ============ 工具方法 ============
+    // ============ 内部工具方法 ============
 
+    /** 广播状态变化到所有监听器（MemosView 收到后更新对应卡片的番茄钟 UI） */
     private notifyChange(session: PomodoroSession): void {
         for (const listener of this.listeners) {
             if (listener.onSessionChange) {
@@ -648,14 +702,18 @@ export class PomodoroManager {
         }
     }
 
+    /**
+     * 通过 session.id 查找会话。先查活跃表再查历史表，
+     * 因为休息阶段的 session 只存在于活跃表，不在 allSessions 中
+     */
     private findSession(sessionId: string): PomodoroSession | undefined {
-        // 先从活跃 sessions 中找（休息 session 不在 allSessions 中）
         for (const session of this.sessions.values()) {
             if (session.id === sessionId) return session;
         }
         return this.allSessions.find(s => s.id === sessionId);
     }
 
+    /** stop 时如果处于暂停状态，结算当前未关闭的暂停记录 */
     private finalizePausedTime(session: PomodoroSession): void {
         if (session.state === 'paused' && session.pauseHistory) {
             const currentPause = session.pauseHistory.find(p => !p.pauseEndTime);
@@ -675,9 +733,9 @@ export class PomodoroManager {
         return `pomodoro-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     }
 
-    /**
-     * 专注完成提示音（较高频率，积极感）
-     */
+    // ============ 提示音（Web Audio API） ============
+
+    /** 专注完成提示音：800Hz 正弦波，0.5 秒衰减 */
     private playNotificationSound(): void {
         try {
             const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -703,9 +761,7 @@ export class PomodoroManager {
         }
     }
 
-    /**
-     * 休息结束提示音（两声短促音，提醒回来工作）
-     */
+    /** 休息结束提示音：两声短促音（600Hz + 800Hz），提醒回来工作 */
     private playBreakEndSound(): void {
         try {
             const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();

@@ -1,6 +1,16 @@
 /**
- * Obsidian 闪念笔记插件
- * 像发微博一样记录灵感 - 支持时间戳、标签分类和历史浏览
+ * Obsidian 闪念笔记插件 — 入口文件
+ *
+ * ## 模块职责
+ * - main.ts（本文件）: 插件生命周期、命令注册、文件变更监听
+ * - MemosView.ts: 主 UI 视图（卡片列表、输入框、番茄钟 UI）
+ * - pomodoro.ts: 番茄钟纯逻辑引擎（不依赖 UI）
+ * - storage.ts: 日记文件的读写和解析，memo 缓存管理
+ * - types.ts: 所有接口/类型定义和正则常量
+ *
+ * ## 文件变更监听
+ * vault.modify + metadataCache.changed 双重监听，确保外部编辑（Alfred/脚本）也能触发刷新
+ * 通过 scheduleDebouncedRefresh 合并 300ms 内的多次事件为一次 refresh
  */
 
 import { Plugin, WorkspaceLeaf, addIcon, TFile } from 'obsidian';
@@ -19,6 +29,7 @@ export default class MemosPlugin extends Plugin {
     settings: MemosPluginSettings = DEFAULT_SETTINGS;
     storage: MemosStorage | null = null;
     pomodoroManager: PomodoroManager | null = null;
+    private pendingRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 
     async onload(): Promise<void> {
         console.log('加载闪念笔记插件');
@@ -66,15 +77,14 @@ export default class MemosPlugin extends Plugin {
         // 添加设置页面
         this.addSettingTab(new MemosSettingTab(this.app, this));
 
-        // 监听日记文件变化（Alfred/外部写入等），失效缓存并刷新视图，无需定时轮询
+        // 文件变更监听：storage.onFileChange 判断是否为日记文件，是则失效缓存并返回 true
+        // 两层保障：vault 事件覆盖 Obsidian 内部编辑，metadataCache 覆盖外部工具写入
+        const scheduleRefresh = () => this.scheduleDebouncedRefresh();
+
         this.registerEvent(
             this.app.vault.on('modify', (file) => {
                 if (file instanceof TFile && this.storage?.onFileChange(file)) {
-                    const view = this.getActiveMemosView();
-                    // 检查是否应该跳过自动刷新（内部修改文件时）
-                    if (view && !view.shouldSkipAutoRefresh()) {
-                        view.refresh();
-                    }
+                    scheduleRefresh();
                 }
             })
         );
@@ -82,10 +92,7 @@ export default class MemosPlugin extends Plugin {
         this.registerEvent(
             this.app.vault.on('create', (file) => {
                 if (file instanceof TFile && this.storage?.onFileChange(file)) {
-                    const view = this.getActiveMemosView();
-                    if (view && !view.shouldSkipAutoRefresh()) {
-                        view.refresh();
-                    }
+                    scheduleRefresh();
                 }
             })
         );
@@ -93,22 +100,15 @@ export default class MemosPlugin extends Plugin {
         this.registerEvent(
             this.app.vault.on('delete', (file) => {
                 if (file instanceof TFile && this.storage?.onFileChange(file)) {
-                    const view = this.getActiveMemosView();
-                    if (view && !view.shouldSkipAutoRefresh()) {
-                        view.refresh();
-                    }
+                    scheduleRefresh();
                 }
             })
         );
 
-        // 外部修改（如 Alfred/Python 写文件）时，vault 的 modify 可能不触发；metadataCache 在重新解析文件后会触发 changed
         this.registerEvent(
             this.app.metadataCache.on('changed', (file) => {
                 if (file instanceof TFile && this.storage?.onFileChange(file)) {
-                    const view = this.getActiveMemosView();
-                    if (view && !view.shouldSkipAutoRefresh()) {
-                        view.refresh();
-                    }
+                    scheduleRefresh();
                 }
             })
         );
@@ -123,7 +123,27 @@ export default class MemosPlugin extends Plugin {
 
     onunload(): void {
         console.log('卸载闪念笔记插件');
+        if (this.pendingRefreshTimer) {
+            clearTimeout(this.pendingRefreshTimer);
+        }
         this.pomodoroManager?.dispose();
+    }
+
+    /**
+     * 300ms 防抖刷新：多次文件变更只触发一次 view.refresh()
+     * 配合 MemosView.shouldSkipAutoRefresh() 避免内部修改文件时的多余刷新
+     */
+    private scheduleDebouncedRefresh(): void {
+        if (this.pendingRefreshTimer) {
+            clearTimeout(this.pendingRefreshTimer);
+        }
+        this.pendingRefreshTimer = setTimeout(() => {
+            this.pendingRefreshTimer = null;
+            const view = this.getActiveMemosView();
+            if (view && !view.shouldSkipAutoRefresh()) {
+                view.refresh();
+            }
+        }, 300);
     }
 
     /**

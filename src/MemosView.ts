@@ -1,7 +1,19 @@
 /**
- * 闪念笔记列表视图
+ * 闪念笔记列表视图（主 UI 层）
+ *
+ * ## 功能
  * 类似 Flomo/微博的卡片式展示，支持按日期分组、标签筛选和搜索
- * 在主内容区域显示（和普通文档一样的标签页）
+ * 在 Obsidian 主内容区域显示（和普通文档一样的标签页）
+ *
+ * ## 番茄钟集成要点
+ * - 通过 stableMemoId（`${filePath}-${lineNumber}`）关联 memo 和 PomodoroManager 中的会话
+ * - 注意：stableMemoId ≠ MemoItem.id（后者是随机 UUID，每次刷新都会变）
+ * - pomodoroUIElements Map 缓存 stableMemoId → DOM 容器，避免每次 tick 都重新查 DOM
+ * - 外部编辑导致行号变化时，reconcilePomodoroSessions() 在 loadMemos 中修复映射
+ *
+ * ## 刷新策略
+ * - skipNextAutoRefresh: 内部修改文件（如切换任务状态）时设置，防止 modify 事件触发多余刷新
+ * - refreshVersion: 异步操作的取消令牌，新的 loadMemos 会让旧的放弃渲染
  */
 
 import { ItemView, WorkspaceLeaf, Menu, Notice, MarkdownRenderer, TFile } from 'obsidian';
@@ -24,17 +36,26 @@ export class MemosView extends ItemView {
     private page: number = 1;
     private inputTextArea: HTMLTextAreaElement | null = null;
     private currentTag: string = '';
-    private currentQuickTag: QuickTag | null = null; // 当前选中的快捷标签（含多关键词）
-    private editingMemo: MemoItem | null = null; // 正在编辑的闪念
-    /** 手机端快捷标签下拉（小屏时显示，与按钮二选一） */
+    private currentQuickTag: QuickTag | null = null;
+    private editingMemo: MemoItem | null = null;
     private quickTagsSelect: HTMLSelectElement | null = null;
-    /** 番茄钟 UI 元素缓存 (memoId -> HTMLElement) */
+    /**
+     * 番茄钟 UI 容器缓存：stableMemoId → 该卡片中的 .memos-pomodoro-control 元素
+     * 避免 PomodoroManager 每秒 tick 时都要 querySelector 查 DOM
+     * loadMemos 重建 DOM 时会 clear，onPomodoroChange 中按需重建
+     */
     private pomodoroUIElements: Map<string, HTMLElement> = new Map();
-    /** 当前专注模式关联的 memoId（stableMemoId），null 表示未开启 */
+    /**
+     * 专注模式：有番茄钟 running/break 时，其他卡片半透明、此卡片高亮
+     * 存储的是 stableMemoId，null 表示无专注
+     */
     private focusMemoId: string | null = null;
-    /** 内部修改文件时跳过自动刷新（由 modify 事件触发） */
+    /**
+     * 防自刷环：toggleTaskStatus 修改文件 → vault.modify 事件 → scheduleDebouncedRefresh
+     * 设置此标志后，下一次 shouldSkipAutoRefresh() 调用返回 true 并自动重置
+     */
     private skipNextAutoRefresh: boolean = false;
-    /** loadMemos 版本号，用于取消被新 refresh 取代的旧异步操作 */
+    /** 递增版本号：loadMemos 开始时 ++，异步回调检查 myVersion === refreshVersion 判断是否过期 */
     private refreshVersion: number = 0;
 
     constructor(
@@ -575,6 +596,8 @@ export class MemosView extends ItemView {
     async loadMemos(): Promise<void> {
         if (!this.contentContainer) return;
 
+        const myVersion = ++this.refreshVersion;
+
         // 清理旧的番茄钟 UI 引用（DOM 即将被销毁）
         this.pomodoroUIElements.clear();
 
@@ -597,13 +620,14 @@ export class MemosView extends ItemView {
                 memos = await this.storage.getAllMemos();
             }
 
+            // 有更新的 refresh 启动，当前已过期，放弃渲染
+            if (myVersion !== this.refreshVersion) return;
+
             // 任务列表模式过滤
             if (this.currentFilter.taskListMode) {
                 if (this.currentFilter.taskListMode === 'all') {
-                    // 显示所有任务（包括 markdown 复选框和关键词任务）
                     memos = memos.filter(memo => memo.taskStatus !== undefined);
                 } else if (this.currentFilter.taskListMode === 'todo') {
-                    // 显示未完成任务：[ ]、TODO、DOING、NOW、LATER、WAITING
                     memos = memos.filter(memo => 
                         memo.taskStatus === 'CHECKBOX_UNCHECKED' ||
                         memo.taskStatus === 'TODO' ||
@@ -613,7 +637,6 @@ export class MemosView extends ItemView {
                         memo.taskStatus === 'WAITING'
                     );
                 } else if (this.currentFilter.taskListMode === 'done') {
-                    // 显示已完成任务：[x]、DONE、CANCELLED
                     memos = memos.filter(memo => 
                         memo.taskStatus === 'CHECKBOX_CHECKED' ||
                         memo.taskStatus === 'DONE' ||
@@ -632,6 +655,11 @@ export class MemosView extends ItemView {
             }
 
             this.displayedMemos = memos;
+
+            // 外部编辑可能改变行号，协调番茄钟 session 的 memoId
+            if (this.settings.enablePomodoro) {
+                this.reconcilePomodoroSessions();
+            }
             
             // 移除加载状态
             loading.remove();
@@ -653,7 +681,9 @@ export class MemosView extends ItemView {
             }
         } catch (error) {
             console.error('加载闪念失败:', error);
-            loading.setText('加载失败，请重试');
+            if (myVersion === this.refreshVersion) {
+                loading.setText('加载失败，请重试');
+            }
         }
     }
 
@@ -878,7 +908,10 @@ export class MemosView extends ItemView {
     }
 
     /**
-     * 切换任务状态并追踪时间（局部更新，无刷新）
+     * 点击复选框时切换任务状态并追踪时间
+     * 修改文件后局部更新卡片 DOM（不触发全量 loadMemos），并联动番茄钟：
+     * - TODO/[ ] → DOING: 自动启动番茄钟
+     * - DOING → DONE/[x]: 自动停止并保存番茄钟
      */
     private async toggleTaskStatus(memo: MemoItem): Promise<void> {
         const file = this.app.vault.getAbstractFileByPath(memo.filePath);
@@ -1140,9 +1173,10 @@ export class MemosView extends ItemView {
     }
 
     /**
-     * 对单行文本执行任务状态切换（参考 obsidian-time-tracking）
-     * @param line 原始行内容
-     * @param memoId memo ID（可选，用于计算番茄钟暂停时间）
+     * 对单行文本执行任务状态切换，返回修改后的行内容
+     * 时间追踪实现：切换到 DOING 时插入 `<!-- ts:ISO|source:todo -->` 隐藏注释，
+     * 切换到 DONE 时解析注释计算时长，并可选追加到行末
+     * @param memoId stableMemoId，用于查询番茄钟暂停时间从总时长中扣除
      */
     private toggleTaskStatusInLine(line: string, memoId?: string): string {
         // 如果禁用时间追踪，直接返回原行（不做任何修改）
@@ -1507,10 +1541,54 @@ export class MemosView extends ItemView {
         this.settings = settings;
     }
 
-    // ============ 番茄钟相关方法 ============
+    // ============ 番茄钟集成 ============
+    //
+    // 通信模式：PomodoroManager 通过 PomodoroEventListener 回调通知本视图
+    // - onSessionChange: 每秒 tick 或状态切换 → 局部更新番茄钟 UI
+    // - onSessionComplete/onBreakStart/onBreakEnd: 阶段变化 → 切换 UI 模板
+    //
+    // stableMemoId 解析约定：`lastIndexOf('-')` 分割 filePath 和 lineNumber
+    // （filePath 本身可能含 '-'，所以不能用 split）
 
     /**
-     * 渲染番茄钟控制区
+     * 外部编辑导致行号偏移时，修复活跃番茄钟的 stableMemoId
+     *
+     * 场景：Alfred 往日记文件中间插入一行 → 原来第 5 行的 DOING 变成第 6 行
+     * → session.memoId 还是 "path-5" 但实际 memo 已移到 "path-6"
+     *
+     * 策略：找到同文件中状态为 DOING 且没有关联番茄钟的 memo 作为候选，执行重映射
+     * 局限：如果同文件有多个 DOING 任务且都没有番茄钟，只会匹配第一个
+     */
+    private reconcilePomodoroSessions(): void {
+        const activeSessions = this.pomodoroManager.getActivePomodoros();
+        for (const session of activeSessions) {
+            const lastDash = session.memoId.lastIndexOf('-');
+            if (lastDash === -1) continue;
+
+            const filePath = session.memoId.substring(0, lastDash);
+            const lineNumber = parseInt(session.memoId.substring(lastDash + 1));
+
+            const memoExists = this.displayedMemos.some(
+                m => m.filePath === filePath && m.lineNumber === lineNumber
+            );
+            if (memoExists) continue;
+
+            const candidate = this.displayedMemos.find(m =>
+                m.filePath === filePath &&
+                m.taskStatus === 'DOING' &&
+                !this.pomodoroManager.getSession(`${m.filePath}-${m.lineNumber}`)
+            );
+
+            if (candidate) {
+                const newMemoId = `${candidate.filePath}-${candidate.lineNumber}`;
+                this.pomodoroManager.remapSessionMemoId(session.memoId, newMemoId);
+            }
+        }
+    }
+
+    /**
+     * 在卡片底部渲染番茄钟控制区
+     * 根据当前状态选择模板：active（运行/暂停）、break（休息）、completed（空闲+历史）
      */
     private renderPomodoroControl(memo: MemoItem, card: HTMLElement): void {
         const stableMemoId = `${memo.filePath}-${memo.lineNumber}`;
@@ -1708,9 +1786,10 @@ export class MemosView extends ItemView {
     }
 
     /**
-     * 更新专注模式状态
-     * 仅当番茄钟正在运行（running）或休息中（short_break/long_break）时开启
-     * paused 不触发专注模式（可能是残留的旧数据，或者用户主动暂停想去看其他任务）
+     * 更新专注模式 CSS 状态
+     * 开启条件：有 running 或休息中的番茄钟
+     * paused 不开启：用户暂停说明想查看其他内容，不应遮挡
+     * 实现：memosList 加 memos-focus-mode 类 + 对应卡片加 memos-focus-target 类
      */
     private updateFocusMode(): void {
         if (!this.memosList) return;
@@ -1761,7 +1840,9 @@ export class MemosView extends ItemView {
     }
 
     /**
-     * 番茄钟状态变化事件
+     * PomodoroManager 每秒 tick 或状态切换时回调
+     * 核心职责：找到对应的 DOM 容器 → 清空并按当前状态重新渲染
+     * 容器查找优先走 pomodoroUIElements 缓存，未命中则从 DOM 中创建
      */
     private onPomodoroChange(session: PomodoroSession): void {
         if (!session || !session.memoId) return;

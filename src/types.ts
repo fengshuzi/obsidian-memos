@@ -1,28 +1,36 @@
 /**
  * 闪念笔记插件类型定义
+ *
+ * ## 关键标识符约定
+ * - **MemoItem.id**: 随机 UUID，仅用于 DOM data-memo-id 定位卡片，每次解析都会重新生成
+ * - **stableMemoId**: `${filePath}-${lineNumber}` 格式，用于番茄钟关联和缓存键
+ *   注意：外部编辑文件可能导致行号偏移，需要 reconcilePomodoroSessions() 修复
  */
 
-/** 闪念笔记条目 */
+/**
+ * 闪念笔记条目
+ * 每条 memo 对应日记文件中的一行列表项（`- HH:mm 内容` 或 `- TODO 内容`）
+ */
 export interface MemoItem {
-    /** 唯一标识符 */
+    /** 随机 UUID，仅用于 DOM 查询，不适合作为跨刷新的稳定标识 */
     id: string;
-    /** 笔记内容 */
+    /** 去掉时间戳和标签后的纯文本内容 */
     content: string;
     /** 创建时间戳 */
     timestamp: Date;
     /** 格式化的时间 HH:mm */
     timeString: string;
-    /** 标签列表 */
+    /** 从内容中提取的标签列表（不含 # 前缀） */
     tags: string[];
-    /** 来源文件路径 */
+    /** 来源文件路径（Obsidian vault 内的相对路径） */
     filePath: string;
-    /** 在文件中的行号 */
+    /** 在文件中的行号（1-based），与 stableMemoId 直接相关 */
     lineNumber: number;
-    /** 原始文本（包含时间戳） */
+    /** 原始行文本（包含时间戳、标签、任务关键词等） */
     rawText: string;
-    /** 日期字符串 YYYY-MM-DD */
+    /** 日期字符串 YYYY-MM-DD（从文件名推导） */
     dateString: string;
-    /** 任务状态（如果是任务） */
+    /** 任务状态（仅任务型 memo 有值） */
     taskStatus?: TaskStatus;
 }
 
@@ -208,61 +216,74 @@ export function parseQuickTags(quickTagsStr: string): QuickTag[] {
 export const MEMOS_VIEW_TYPE = 'memos-view';
 export const POMODORO_STATS_VIEW_TYPE = 'pomodoro-stats-view';
 
-/** 闪念笔记的正则表达式模式 */
+// ============ 行解析正则（storage.ts 的 parseMemoLine 使用） ============
+
+/** 普通 memo：`- 13:33 内容` → [时间, 内容] */
 export const MEMO_PATTERN = /^-\s*(\d{2}:\d{2})\s+(.+)$/;
 
-/** 任务复选框的正则表达式（支持 - [ ] 13:33 内容 格式） */
+/** 复选框任务：`- [ ] 13:33 内容` 或 `- [x] 内容` → [勾选状态, 时间?, 内容] */
 export const TASK_CHECKBOX_PATTERN = /^-\s*\[([ xX])\]\s*(\d{2}:\d{2})?\s*(.+)$/;
 
-/** 任务关键词的正则表达式（支持 - TODO 13:33 内容 格式） */
+/** 关键词任务：`- TODO 13:33 内容` → [关键词, 时间?, 内容] */
 export const TASK_KEYWORD_PATTERN = /^-\s*(TODO|DONE|DOING|NOW|LATER|WAITING|CANCELLED)\s+(\d{2}:\d{2})?\s*(.+)$/i;
 
-/** 标签的正则表达式 */
+/** 从内容中提取所有标签：`#tag1 #tag2` → ['tag1', 'tag2'] */
 export const TAG_PATTERN = /#([^\s#]+)/g;
 
-/** 任务状态类型 */
+/**
+ * 任务状态类型
+ * - CHECKBOX_*: Markdown 复选框格式 `- [ ]` / `- [x]`
+ * - 其他: 关键词格式 `- TODO` / `- DOING` 等，支持时间追踪的完整生命周期
+ * 状态流转：TODO → DOING（开始计时）→ DONE（记录时长）; CHECKBOX_UNCHECKED → DOING → CHECKBOX_CHECKED
+ */
 export type TaskStatus = 'TODO' | 'DONE' | 'DOING' | 'NOW' | 'LATER' | 'WAITING' | 'CANCELLED' | 'CHECKBOX_UNCHECKED' | 'CHECKBOX_CHECKED';
 
 // ============ 番茄钟相关类型 ============
+// 详细架构说明见 pomodoro.ts 文件头注释
 
-/** 番茄钟状态 */
+/**
+ * 番茄钟状态机
+ * idle → running ⇄ paused → completed → short_break/long_break → idle
+ */
 export type PomodoroState = 'idle' | 'running' | 'paused' | 'completed' | 'short_break' | 'long_break';
 
-/** 番茄钟暂停记录 */
+/** 单次暂停的起止记录，用于精确扣除暂停时间 */
 export interface PomodoroPauseRecord {
-    /** 暂停开始时间戳 */
+    /** 暂停开始时间戳 (Date.now()) */
     pauseStartTime: number;
-    /** 暂停结束时间戳（恢复时） */
+    /** 恢复时回填，未恢复时为 undefined */
     pauseEndTime?: number;
-    /** 本次暂停时长（秒） */
+    /** 本次暂停时长（秒），恢复时计算并回填 */
     duration?: number;
 }
 
-/** 单个番茄钟会话 */
+/**
+ * 单个番茄钟会话
+ * 专注阶段和休息阶段使用同一结构，通过 state 区分
+ */
 export interface PomodoroSession {
-    /** 番茄钟唯一ID */
+    /** 随机唯一 ID（`pomodoro-${timestamp}-${random}`） */
     id: string;
-    /** 关联的 memo ID */
+    /** stableMemoId 格式：`${filePath}-${lineNumber}`，关联到具体 memo */
     memoId: string;
-    /** 开始时间戳 */
+    /** 专注/休息开始的时间戳 (Date.now()) */
     startTime: number;
-    /** 结束时间戳（完成时） */
+    /** 专注完成时回填 */
     endTime?: number;
-    /** 计划时长（分钟） */
+    /** 计划时长（分钟），专注阶段=设置值，休息阶段=breakMinutes */
     plannedMinutes: number;
-    /** 实际时长（分钟） */
+    /** 实际专注时长（分钟），完成时计算（排除暂停） */
     actualMinutes?: number;
-    /** 状态 */
     state: PomodoroState;
-    /** 剩余秒数（运行中/暂停时/休息时） */
+    /** 每秒更新的倒计时（UI 直接读取） */
     remainingSeconds?: number;
-    /** 暂停时累积的秒数 */
+    /** 已结算的暂停累计秒数（不含当前未关闭的暂停） */
     pausedAccumulatedSeconds?: number;
-    /** 暂停历史记录 */
+    /** 暂停历史，每次 pause/resume 追加一条 */
     pauseHistory?: PomodoroPauseRecord[];
-    /** 该 memo 连续完成的番茄数（用于判断长休息） */
+    /** 连续完成计数，longBreakInterval 取模判断是否进入长休息 */
     consecutiveCount?: number;
-    /** 休息时长（分钟），休息阶段使用 */
+    /** 仅休息阶段使用：休息时长（分钟） */
     breakMinutes?: number;
 }
 
