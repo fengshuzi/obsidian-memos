@@ -1589,30 +1589,15 @@ export class MemosView extends ItemView {
     private renderPomodoroCompleted(container: HTMLElement, memo: MemoItem, count: number): void {
         container.addClass('memos-pomodoro-completed');
 
-        const text = container.createSpan({
-            cls: 'memos-pomodoro-completed-text',
-            text: `✅ 已完成 ${count} 个番茄`
-        });
+        const tomatoes = container.createSpan({ cls: 'memos-pomodoro-tomatoes' });
+        for (let i = 0; i < count; i++) {
+            const t = tomatoes.createSpan({ cls: 'memos-pomodoro-tomato', text: '🍅' });
+            t.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.plugin.activatePomodoroStats();
+            });
+        }
 
-        const startBtn = container.createEl('button', {
-            cls: 'memos-pomodoro-btn-small',
-            text: '+1'
-        });
-        startBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            // 使用稳定的 memoId：filePath-lineNumber
-            const stableMemoId = `${memo.filePath}-${memo.lineNumber}`;
-            this.pomodoroManager.start(stableMemoId);
-        });
-
-        const statsBtn = container.createEl('button', {
-            cls: 'memos-pomodoro-btn-small',
-            text: '📊'
-        });
-        statsBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.plugin.activatePomodoroStats();
-        });
     }
 
     /**

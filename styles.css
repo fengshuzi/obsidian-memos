@@ -1044,6 +1044,22 @@
     gap: 4px;
 }
 
+.memos-pomodoro-tomatoes {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.memos-pomodoro-tomato {
+    cursor: pointer;
+    font-size: 14px;
+    transition: transform 0.15s ease;
+}
+
+.memos-pomodoro-tomato:hover {
+    transform: scale(1.3);
+}
+
 /* 短休息状态 */
 .memos-pomodoro-short-break {
     background: rgba(59, 130, 246, 0.1);
