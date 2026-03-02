@@ -610,9 +610,17 @@ export class MemosView extends ItemView {
 
         try {
             let memos: MemoItem[];
-            
+
             // 根据筛选条件获取数据：标签与内容搜索是 AND 关系
-            if (this.currentFilter.filterTags && this.currentFilter.filterTags.length > 0) {
+            // 特殊处理：小番茄标签 → 展示 rawText 中包含 🍅 的笔记（已记录番茄数的已完成任务）
+            const isPomodoriFilter =
+                this.currentFilter.filterTags?.includes('小番茄') ||
+                this.currentFilter.tag === '小番茄';
+
+            if (isPomodoriFilter) {
+                const allMemos = await this.storage.getAllMemos();
+                memos = allMemos.filter(m => m.rawText.includes('🍅'));
+            } else if (this.currentFilter.filterTags && this.currentFilter.filterTags.length > 0) {
                 memos = await this.storage.getMemosByTags(this.currentFilter.filterTags);
             } else if (this.currentFilter.tag) {
                 memos = await this.storage.getMemosByTag(this.currentFilter.tag);
