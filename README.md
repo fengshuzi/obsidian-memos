@@ -206,3 +206,15 @@ this.registerEvent(this.app.metadataCache.on('changed', (file) => {
 ## 许可证
 
 MIT License
+
+
+---
+
+## ☕ 请作者喝杯咖啡
+
+如果这个插件帮助了你，欢迎扫码打赏，感谢支持！
+
+<div align="center">
+  <img src="./assets/wechat-donate.jpg" alt="微信打赏" width="200" />
+  <p><sub>微信扫码打赏</sub></p>
+</div>
