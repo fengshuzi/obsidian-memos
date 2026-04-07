@@ -1251,7 +1251,7 @@ export class MemosView extends ItemView {
                 // [ ] → DOING
                 const startTime = new Date().toISOString();
                 const displayTime = formatStartTime(startTime);
-                return `- DOING ${displayTime} <!-- ts:${startTime}|source:checkbox --> ${content}`;
+                return `- DOING ${timeStr || displayTime} <!-- ts:${startTime}|source:checkbox --> ${content}`;
             } else {
                 // [x] → 普通列表
                 return `- ${timeStr ? timeStr + ' ' : ''}${content}`;
@@ -1268,7 +1268,7 @@ export class MemosView extends ItemView {
             const [, , timeStr, content] = todoMatch;
             const startTime = new Date().toISOString();
             const displayTime = formatStartTime(startTime);
-            return `- DOING ${displayTime} <!-- ts:${startTime}|source:todo --> ${content}`;
+            return `- DOING ${timeStr || displayTime} <!-- ts:${startTime}|source:todo --> ${content}`;
             
         } else if (doingMatch) {
             // DOING → DONE 或 [x]
