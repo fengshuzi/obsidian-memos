@@ -1,220 +1,186 @@
-# Obsidian 闪念笔记插件
+# 闪念笔记
 
-像发微博一样记录灵感 - 支持时间戳、标签分类和历史浏览，类似 Flomo 的轻量笔记体验。
+**像发微博一样记录灵感**
 
-## 功能特性
+[![GitHub Release](https://img.shields.io/github/v/release/fengshuzi/obsidian-memos)](https://github.com/fengshuzi/obsidian-memos/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-- 🚀 **快速捕获** - 按下快捷键即可快速记录灵感，无需中断工作流
-- ⏰ **自动时间戳** - 每条闪念自动添加时间戳，格式：`- HH:mm 内容`
-- 🏷️ **标签分类** - 支持添加标签，方便后续筛选和整理
-- ✅ **任务支持** - 支持复选框和任务关键词格式，自动识别并显示任务状态
-- ⏱️ **时间追踪** - 点击任务可切换状态并自动追踪耗时，参考 obsidian-time-tracking
-- 📋 **任务列表** - 特殊标签快速查看所有任务、待办任务、已完成任务
-- 📅 **Journal 存储** - 闪念存储在 journals 文件夹，与 Logseq 格式兼容
-- 📋 **卡片式浏览** - 类似 Flomo 的卡片列表，支持按日期分组
-- 🔍 **搜索筛选** - 支持关键词搜索和标签筛选
+一个轻量级的 Obsidian 灵感捕获插件，受 [Flomo](https://flomoapp.com/) 启发，与 [Logseq](https://logseq.com/) 日记格式兼容。
+
+用最短路径把脑中的想法写下来，再通过标签和任务管理让它们产生价值。
+
+---
+
+![闪念笔记截图](./assets/obsidian-memos-screenshot.png)
+
+## 为什么选择闪念笔记？
+
+灵感稍纵即逝。你需要的不是一个复杂的笔记系统，而是一个**零摩擦**的记录入口：
+
+- **一个快捷键** `Cmd/Ctrl + Shift + M` → 输入 → 回车，灵感已落纸面
+- **自动时间戳**，无需手动标注时间
+- **标签分类 + 智能关键词**，写「午餐13 韭黄炒蛋」自动带上 `#cy`
+- **任务管理一体化**，灵感可以直接变成待办，追踪耗时，番茄钟专注
+- **Journal 格式存储**，数据写在 markdown 文件里，永远是你的
+
+## 核心功能
+
+### 快速捕获
+
+按下快捷键，弹出输入框，写完即走。
+
+![输入](./assets/memos-input.png)
+
+- `Cmd/Ctrl + Enter` 发送
+- `Cmd/Ctrl + Shift + Enter` 发送并继续输入（连续记录模式）
+- 支持 `#tag` 标签、`**加粗**` 等 Markdown 语法
+
+### 标签筛选与聚合
+
+按标签浏览、搜索关键词、用快捷标签按钮一键切换视图。
+
+![快速筛选：按关键词与标签](./assets/memos-tag-filter.png)
+
+![快速筛选：快捷标签与筛选结果](./assets/memos-quick-filter.png)
+
+**聚合标签**：`cy+jf+qt+gw|每日记账` 表示点击「每日记账」按钮时，显示带 `#cy`、`#jf`、`#qt`、`#gw` 中任意一个标签的闪念。一条记录既是闪念，也是记账流水。
+
+### 智能关键词
+
+配置 `{"cy": ["午餐","早餐","咖啡"]}` 后，输入「午餐13 韭黄炒蛋」会自动加上 `#cy` 标签。无需手动打标签。
+
+### 任务管理
+
+灵感可以直接变成任务。支持复选框和关键词两种格式：
+
+```markdown
+- [ ] 13:33 完成项目报告
+- TODO 15:00 撰写周报
+- DOING 15:30 代码审查
+- [x] 14:00 回复邮件
+```
+
+点击复选框即可切换状态，自动追踪耗时：
+
+```
+[ ] → DOING → [x]（带时长）
+```
+
+![任务列表](./assets/memos-task-lists.png)
+
+三个特殊标签快速筛选：
+- **ALL TASKS** — 所有任务
+- **TODO LIST** — 未完成任务
+- **DONE LIST** — 已完成任务
+
+### 番茄钟
+
+内置番茄工作法，与任务深度绑定。任务进入 DOING 状态时自动启动计时。
+
+![番茄钟](./assets/memos-pomodoro-button.png)
+
+- 专注/短休息/长休息自动轮转
+- 暂停、跳过、停止随时可控
+- 统计面板查看今日/累计数据
+
+![番茄钟统计](./assets/memos-pomodoro-stats.png)
+
+### 外部写入自动刷新
+
+Alfred、Python 脚本、Quick Add 等外部工具修改 Journal 文件后，视图自动刷新，无需手动操作。
+
+## 闪念格式
+
+闪念以列表项形式存储在 Journal 文件中（如 `journals/2026-01-30.md`）：
+
+```markdown
+- 14:30 这是一条闪念
+- 14:35 #想法 #灵感 记录一个点子
+- 15:00 #jf 房租2366.85 闪念笔记 每日记账
+- [ ] 16:00 需要完成的任务
+- [x] 16:30 已经完成的任务 30分钟
+```
 
 ## 安装
 
+### Obsidian 社区市场（推荐）
+
+上架审核中，届时可直接在 Obsidian 设置 → 第三方插件 → 社区插件中搜索「闪念笔记」安装。
+
 ### 手动安装
 
-1. 下载最新版本的 `main.js`、`manifest.json` 和 `styles.css`
-2. 在 Obsidian vault 的 `.obsidian/plugins/` 目录下创建 `obsidian-memos` 文件夹
-3. 将下载的文件复制到该文件夹
-4. 重启 Obsidian 或重新加载插件
-5. 在设置 → 第三方插件中启用「闪念笔记」
+1. 前往 [Releases](https://github.com/fengshuzi/obsidian-memos/releases) 下载最新版本
+2. 下载 `main.js`、`manifest.json`、`styles.css`
+3. 在 vault 中创建 `.obsidian/plugins/obsidian-memos/` 目录
+4. 将文件放入该目录
+5. 重启 Obsidian，在设置 → 第三方插件中启用
 
-## 使用方法
+## 快速开始
 
-### 快捷键
-
-- `Cmd/Ctrl + Shift + M` - 打开闪念输入弹窗
-- 在输入弹窗内：
-  - `Cmd/Ctrl + Enter` - 发送闪念
-  - `Cmd/Ctrl + Shift + Enter` - 发送并继续输入
-  - `Escape` - 关闭弹窗
-
-### 命令面板
-
-- `闪念笔记: 打开闪念视图` - 打开侧边栏视图
-- `闪念笔记: 新建闪念` - 打开输入弹窗
-- `闪念笔记: 刷新闪念列表` - 刷新列表
-
-### 闪念格式
-
-闪念以列表项的形式存储在 journal 文件中：
-
-```markdown
-- 14:30 这是一条闪念笔记
-- 14:35 #想法 #灵感 这是带标签的闪念
-- 15:00 支持 **Markdown** 格式
-```
-
-### 任务格式支持
-
-插件支持多种任务格式，所有任务都会被识别为闪念笔记并显示对应的状态图标：
-
-#### 1. 复选框格式
-```markdown
-- [ ] 13:33 未完成的任务
-- [x] 14:00 已完成的任务
-- [ ] 未完成的任务（无时间戳）
-```
-
-#### 2. 任务关键词格式
-```markdown
-- TODO 15:00 待办事项
-- DOING 15:30 正在进行
-- DONE 16:00 已完成
-- NOW 16:30 立即执行
-- LATER 17:00 稍后处理
-- WAITING 17:30 等待中
-- CANCELLED 18:00 已取消
-```
-
-#### 3. 任务状态显示和时间追踪
-
-在闪念视图中，任务会显示对应的状态图标和彩色边框，并支持点击切换状态和时间追踪：
-
-**状态图标：**
-- ☐ 未完成复选框（灰色边框）
-- ☑ 已完成复选框（绿色边框，半透明）
-- 📝 TODO（蓝色边框）
-- ⚡ DOING（橙色边框）
-- ✅ DONE（绿色边框，半透明）
-- 🔥 NOW（红色边框）
-- ⏰ LATER（紫色边框）
-- ⏳ WAITING（青色边框）
-- ❌ CANCELLED（灰色边框，半透明，删除线）
-
-**时间追踪功能：**
-- 点击复选框或状态图标可以切换任务状态
-- 切换到 DOING 状态时自动记录开始时间
-- 完成任务时自动计算并显示耗时
-- 状态切换流程：
-  - `[ ]` → `DOING` → `[x]` （带时长）
-  - `TODO` → `DOING` → `DONE` （带时长）
-  - `DONE` → 普通列表项
-
-**示例：**
-```markdown
-- [ ] 13:33 完成报告
-# 点击复选框后变为：
-- DOING 14:00 <!-- ts:2024-02-09T14:00:00.000Z|source:checkbox --> 完成报告
-# 再次点击后变为：
-- [x] 13:33 完成报告 25分钟
-```
+1. 安装并启用插件
+2. 配置 Journal 文件夹路径（默认 `journals`）
+3. `Cmd/Ctrl + Shift + M` 打开输入框，开始记录
 
 ## 设置选项
 
-- **Journal 文件夹** - 闪念存储的文件夹路径，默认 `journals`
-- **日期格式** - Journal 文件名的日期格式，默认 `YYYY-MM-DD`
-- **时间格式** - 时间戳格式，默认 `HH:mm`
-- **默认标签** - 新建闪念时自动添加的标签
-- **每页显示数量** - 列表分页显示的条数
-- **提交后保持弹窗打开** - 方便连续记录多条闪念
-- **启用任务时间追踪** - 点击任务复选框时自动切换状态并追踪耗时（默认开启）
-- **自动追加时长** - 完成任务时自动在任务末尾追加耗时（默认开启）
-- **启用任务列表标签** - 显示特殊的任务列表标签（默认开启）
-- **任务列表标签名称** - 自定义 ALL TASKS、TODO LIST、DONE LIST 的显示名称
+| 设置项 | 说明 | 默认值 |
+|--------|------|--------|
+| Journal 文件夹 | 闪念存储目录 | `journals` |
+| 日期格式 | 文件名日期 | `YYYY-MM-DD` |
+| 时间格式 | 时间戳格式 | `HH:mm` |
+| 快捷标签 | 按钮与聚合标签 | — |
+| 智能关键词 | 数字+关键词 → 自动标签 | — |
+| 习惯打卡关键词 | 关键词 → 自动标签 | — |
+| 每页显示数量 | 列表分页条数 | — |
+| 提交后保持弹窗打开 | 连续记录模式 | 关闭 |
+| 启动时打开闪念 | 自动打开视图 | 关闭 |
+| 启用任务时间追踪 | 点击任务切换状态并追踪耗时 | 开启 |
+| 自动追加时长 | 完成时显示耗时 | 开启 |
+| 启用任务列表标签 | ALL/TODO/DONE 标签 | 开启 |
+| 启用番茄钟 | 番茄工作法 | 开启 |
+| 专注时长 | 每个番茄时长 | 25 分钟 |
+| 短休息时长 | 番茄后休息 | 5 分钟 |
+| 长休息时长 | 多番茄后休息 | 15 分钟 |
+| 长休息间隔 | 每几个番茄长休息 | 4 个 |
+| 完成提示音 | 番茄/休息完成提示 | 开启 |
 
-### 任务列表标签
+![设置界面](./assets/memos-settings.png)
 
-点击快捷标签区域的特殊标签可以快速筛选任务：
+## 常见问题
 
-- **ALL TASKS**：显示所有任务（包括 `[ ]`、`[x]`、`TODO`、`DOING`、`DONE` 等）
-- **TODO LIST**：显示未完成任务（`[ ]`、`TODO`、`DOING`、`NOW`、`LATER`、`WAITING`）
-- **DONE LIST**：显示已完成任务（`[x]`、`DONE`、`CANCELLED`）
+**Q: 闪念存在哪里？**
+A: 存在「Journal 文件夹」下按日期命名的 md 文件中，如 `journals/2026-01-30.md`。数据始终在你的 vault 里。
+
+**Q: 支持哪些任务格式？**
+A: Markdown 复选框（`- [ ]`、`- [x]`）和关键词（TODO、DOING、DONE、NOW、LATER、WAITING、CANCELLED）。
+
+**Q: 复选框点击没反应？**
+A: 检查「启用任务时间追踪」是否开启。关闭后复选框为只读。
+
+**Q: 如何查看所有待办？**
+A: 点击快捷标签区域的「TODO LIST」。
+
+**Q: 番茄钟数据存在哪？**
+A: 存在 Obsidian 的 `data.json` 中，不在 markdown 文件里，不影响笔记内容。
+
+**Q: 重启 Obsidian 后番茄钟还在吗？**
+A: 运行中的番茄钟会变为暂停状态，手动继续即可。
+
+## 设计灵感
+
+- [Flomo](https://flomoapp.com/) — 卡片式 UI 和轻量记录理念
+- [Logseq](https://logseq.com/) — Journal 格式
+- [Obsidian Thino](https://github.com/Quorafind/Obsidian-Thino) — 交互参考
 
 ## 开发
 
 ```bash
-# 安装依赖
 npm install
-
-# 开发模式（监听文件变化）
-npm run dev
-
-# 生产构建
-npm run build
-
-# 构建并部署到本地 vault
-npm run build-deploy
-
-# 发布到 GitHub
-npm run release
+npm run dev      # 开发模式
+npm run build    # 构建
+npm run release  # 发布到 GitHub
 ```
-
-## 插件开发参考：监听文件变化并自动刷新视图
-
-当插件依赖 vault 内某些文件（如本插件的 journals 日记）时，若文件被**外部工具**修改（如 Alfred、Python 脚本、Quick Add 等），Obsidian 的 `vault.on('modify')` 有时不会触发，视图不会自动刷新。可采用「vault 事件 + metadataCache 事件」双监听，无需定时轮询。
-
-### 思路
-
-- **vault.on('modify' | 'create' | 'delete')**：Obsidian 自身或部分外部写入会触发，先监听并刷新。
-- **metadataCache.on('changed')**：外部修改文件后，Obsidian 重新解析该文件时会触发，用于兜底外部写入（如 Alfred/Python 写盘）。
-
-仅当变更的是「你关心的路径」时再失效缓存并刷新视图，避免无关文件变更导致多余刷新。
-
-### 示例（main.ts / 插件入口）
-
-```ts
-// 1. 存储层：文件变化时失效缓存，并告知「是否生效」
-// storage.ts
-onFileChange(file: TFile): boolean {
-    if (isMyTargetFile(file)) {  // 仅关心某路径/扩展名
-        this.invalidateCache();
-        return true;
-    }
-    return false;
-}
-
-// 2. 插件层：vault 三事件 + metadataCache.changed，生效时刷新视图
-// main.ts
-this.registerEvent(this.app.vault.on('modify', (file) => {
-    if (file instanceof TFile && this.storage?.onFileChange(file)) {
-        this.getActiveMyView()?.refresh();
-    }
-}));
-this.registerEvent(this.app.vault.on('create', (file) => {
-    if (file instanceof TFile && this.storage?.onFileChange(file)) {
-        this.getActiveMyView()?.refresh();
-    }
-}));
-this.registerEvent(this.app.vault.on('delete', (file) => {
-    if (file instanceof TFile && this.storage?.onFileChange(file)) {
-        this.getActiveMyView()?.refresh();
-    }
-}));
-// 外部修改（如 Alfred/Python 写文件）时，vault.modify 可能不触发；
-// metadataCache 在重新解析文件后会触发 changed
-this.registerEvent(this.app.metadataCache.on('changed', (file) => {
-    if (file instanceof TFile && this.storage?.onFileChange(file)) {
-        this.getActiveMyView()?.refresh();
-    }
-}));
-```
-
-其他插件只需：实现自己的 `isMyTargetFile` 与 `invalidateCache`，并在 `onFileChange` 里返回是否生效；在 main 里用上述四段 `registerEvent` 即可复用该方案。
-
-## 设计灵感
-
-- [Logseq](https://logseq.com/) - 闪念功能和 Journal 格式
-- [Flomo](https://flomoapp.com/) - 卡片式 UI 和轻量记录体验
-- [Obsidian Thino](https://github.com/Quorafind/Obsidian-Thino) - 插件交互参考
 
 ## 许可证
 
-MIT License
-
-
----
-
-## ☕ 请作者喝杯咖啡
-
-如果这个插件帮助了你，欢迎扫码打赏，感谢支持！
-
-<div align="center">
-  <img src="./assets/wechat-donate.jpg" alt="微信打赏" width="200" />
-  <p><sub>微信扫码打赏</sub></p>
-</div>
+[MIT License](./LICENSE)
