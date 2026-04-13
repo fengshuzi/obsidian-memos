@@ -1,5 +1,5 @@
 {
-    "name": "obsidian-memos",
+    "name": "lite-memo",
     "version": "1.0.0",
     "description": "闪念笔记插件 - 像发微博一样记录灵感，支持时间戳、标签分类和历史浏览",
     "main": "main.js",

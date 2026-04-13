@@ -17,27 +17,27 @@ const NOTE_DEMO_PATH = join(
 const VAULTS = [
     {
         name: 'Mobile',
-        path: join(BASE_PATH, '.obsidian-mobile/plugins/obsidian-memos')
+        path: join(BASE_PATH, '.obsidian-mobile/plugins/lite-memo')
     },
     {
         name: 'Pro',
-        path: join(BASE_PATH, '.obsidian-pro/plugins/obsidian-memos')
+        path: join(BASE_PATH, '.obsidian-pro/plugins/lite-memo')
     },
     {
         name: 'iPad',
-        path: join(BASE_PATH, '.obsidian-ipad/plugins/obsidian-memos')
+        path: join(BASE_PATH, '.obsidian-ipad/plugins/lite-memo')
     },
     {
         name: '2017',
-        path: join(BASE_PATH, '.obsidian-2017/plugins/obsidian-memos')
+        path: join(BASE_PATH, '.obsidian-2017/plugins/lite-memo')
     },
     {
         name: 'Zhang',
-        path: join(BASE_PATH, '.obsidian-zhang/plugins/obsidian-memos')
+        path: join(BASE_PATH, '.obsidian-zhang/plugins/lite-memo')
     },
     {
         name: 'Note-Demo',
-        path: join(NOTE_DEMO_PATH, '.obsidian/plugins/obsidian-memos')
+        path: join(NOTE_DEMO_PATH, '.obsidian/plugins/lite-memo')
     }
 ];
 
@@ -48,7 +48,7 @@ const FILES_TO_COPY = [
     { src: 'dist/styles.css', dest: 'styles.css' }
 ];
 
-console.log('📦 开始部署 Obsidian Memos 插件到所有 vaults...\n');
+console.log('📦 开始部署 Lite Memo 插件到所有 vaults...\n');
 
 let successCount = 0;
 let failCount = 0;

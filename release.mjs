@@ -4,9 +4,9 @@ import { readFileSync, existsSync } from 'fs';
 // 读取 manifest.json 获取版本号
 const manifest = JSON.parse(readFileSync('manifest.json', 'utf8'));
 const version = manifest.version;
-const tagName = `obsidian-memos-v${version}`;
+const tagName = `lite-memo-v${version}`;
 
-console.log(`📦 准备发布 Obsidian Memos v${version}...\n`);
+console.log(`📦 准备发布 Lite Memo v${version}...\n`);
 
 // 检查是否安装了 gh CLI
 try {
@@ -71,7 +71,7 @@ try {
 
 // 创建 GitHub Release（用 spawnSync 传参，不经过 shell，避免多行 --notes 被拆成多条命令）
 console.log('\n🚀 创建 GitHub Release...');
-const releaseNotes = `## Obsidian Memos v${version}
+const releaseNotes = `## Lite Memo v${version}
 
 ### 功能特性
 - 🚀 快速捕获灵感，像发微博一样记录笔记
@@ -82,7 +82,7 @@ const releaseNotes = `## Obsidian Memos v${version}
 
 ### 安装
 1. 下载 \`main.js\`、\`manifest.json\` 和 \`styles.css\`
-2. 复制到 \`.obsidian/plugins/obsidian-memos/\` 目录
+2. 复制到 \`.obsidian/plugins/lite-memo/\` 目录
 3. 在 Obsidian 设置中启用插件
 `;
 const r = spawnSync('gh', [

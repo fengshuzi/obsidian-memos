@@ -1,8 +1,8 @@
-# 闪念笔记
+# 简记
 
 **像发微博一样记录灵感**
 
-[![GitHub Release](https://img.shields.io/github/v/release/fengshuzi/obsidian-memos)](https://github.com/fengshuzi/obsidian-memos/releases)
+[![GitHub Release](https://img.shields.io/github/v/release/fengshuzi/lite-memo)](https://github.com/fengshuzi/lite-memo/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 一个轻量级的 Obsidian 灵感捕获插件，受 [Flomo](https://flomoapp.com/) 启发，与 [Logseq](https://logseq.com/) 日记格式兼容。
@@ -11,9 +11,9 @@
 
 ---
 
-![闪念笔记截图](./assets/obsidian-memos-screenshot.png)
+![简记截图](./assets/obsidian-memos-screenshot.png)
 
-## 为什么选择闪念笔记？
+## 为什么选择简记？
 
 灵感稍纵即逝。你需要的不是一个复杂的笔记系统，而是一个**零摩擦**的记录入口：
 
@@ -43,7 +43,7 @@
 
 ![快速筛选：快捷标签与筛选结果](./assets/memos-quick-filter.png)
 
-**聚合标签**：`cy+jf+qt+gw|每日记账` 表示点击「每日记账」按钮时，显示带 `#cy`、`#jf`、`#qt`、`#gw` 中任意一个标签的闪念。一条记录既是闪念，也是记账流水。
+**聚合标签**：`cy+jf+qt+gw|每日记账` 表示点击「每日记账」按钮时，显示带 `#cy`、`#jf`、`#qt`、`#gw` 中任意一个标签的记录。一条记录既是灵感，也是记账流水。
 
 ### 智能关键词
 
@@ -89,14 +89,14 @@
 
 Alfred、Python 脚本、Quick Add 等外部工具修改 Journal 文件后，视图自动刷新，无需手动操作。
 
-## 闪念格式
+## 记录格式
 
-闪念以列表项形式存储在 Journal 文件中（如 `journals/2026-01-30.md`）：
+记录以列表项形式存储在 Journal 文件中（如 `journals/2026-01-30.md`）：
 
 ```markdown
-- 14:30 这是一条闪念
+- 14:30 这是一条记录
 - 14:35 #想法 #灵感 记录一个点子
-- 15:00 #jf 房租2366.85 闪念笔记 每日记账
+- 15:00 #jf 房租2366.85 简记 每日记账
 - [ ] 16:00 需要完成的任务
 - [x] 16:30 已经完成的任务 30分钟
 ```
@@ -105,13 +105,13 @@ Alfred、Python 脚本、Quick Add 等外部工具修改 Journal 文件后，视
 
 ### Obsidian 社区市场（推荐）
 
-上架审核中，届时可直接在 Obsidian 设置 → 第三方插件 → 社区插件中搜索「闪念笔记」安装。
+上架审核中，届时可直接在 Obsidian 设置 → 第三方插件 → 社区插件中搜索「简记」安装。
 
 ### 手动安装
 
-1. 前往 [Releases](https://github.com/fengshuzi/obsidian-memos/releases) 下载最新版本
+1. 前往 [Releases](https://github.com/fengshuzi/lite-memo/releases) 下载最新版本
 2. 下载 `main.js`、`manifest.json`、`styles.css`
-3. 在 vault 中创建 `.obsidian/plugins/obsidian-memos/` 目录
+3. 在 vault 中创建 `.obsidian/plugins/lite-memo/` 目录
 4. 将文件放入该目录
 5. 重启 Obsidian，在设置 → 第三方插件中启用
 
@@ -125,7 +125,7 @@ Alfred、Python 脚本、Quick Add 等外部工具修改 Journal 文件后，视
 
 | 设置项 | 说明 | 默认值 |
 |--------|------|--------|
-| Journal 文件夹 | 闪念存储目录 | `journals` |
+| Journal 文件夹 | 记录存储目录 | `journals` |
 | 日期格式 | 文件名日期 | `YYYY-MM-DD` |
 | 时间格式 | 时间戳格式 | `HH:mm` |
 | 快捷标签 | 按钮与聚合标签 | — |
@@ -133,7 +133,7 @@ Alfred、Python 脚本、Quick Add 等外部工具修改 Journal 文件后，视
 | 习惯打卡关键词 | 关键词 → 自动标签 | — |
 | 每页显示数量 | 列表分页条数 | — |
 | 提交后保持弹窗打开 | 连续记录模式 | 关闭 |
-| 启动时打开闪念 | 自动打开视图 | 关闭 |
+| 启动时打开简记 | 自动打开主视图 | 关闭 |
 | 启用任务时间追踪 | 点击任务切换状态并追踪耗时 | 开启 |
 | 自动追加时长 | 完成时显示耗时 | 开启 |
 | 启用任务列表标签 | ALL/TODO/DONE 标签 | 开启 |
@@ -148,7 +148,7 @@ Alfred、Python 脚本、Quick Add 等外部工具修改 Journal 文件后，视
 
 ## 常见问题
 
-**Q: 闪念存在哪里？**
+**Q: 记录存在哪里？**
 A: 存在「Journal 文件夹」下按日期命名的 md 文件中，如 `journals/2026-01-30.md`。数据始终在你的 vault 里。
 
 **Q: 支持哪些任务格式？**

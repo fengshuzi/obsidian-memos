@@ -17,7 +17,7 @@ VAULT_PATH = "/Users/lizhifeng/Library/Mobile Documents/iCloud~md~obsidian/Docum
 # 日记文件夹路径（相对于 vault）
 JOURNALS_FOLDER = "journals"
 # 插件配置路径（相对于 vault）
-PLUGIN_CONFIG_PATH = ".obsidian/plugins/obsidian-memos/data.json"
+PLUGIN_CONFIG_PATH = ".obsidian/plugins/lite-memo/data.json"
 
 # ========== 默认智能关键词配置（如果无法读取插件配置则使用此配置）==========
 DEFAULT_SMART_KEYWORDS = {
