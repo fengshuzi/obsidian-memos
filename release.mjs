@@ -4,7 +4,7 @@ import { readFileSync, existsSync } from 'fs';
 // 读取 manifest.json 获取版本号
 const manifest = JSON.parse(readFileSync('manifest.json', 'utf8'));
 const version = manifest.version;
-const tagName = `lite-memo-v${version}`;
+const tagName = `${version}`;
 
 console.log(`📦 准备发布 Lite Memo v${version}...\n`);
 
