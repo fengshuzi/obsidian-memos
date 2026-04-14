@@ -148,7 +148,7 @@ export const DEFAULT_SETTINGS: MemosPluginSettings = {
 /** 解析智能关键词配置 */
 export function parseSmartKeywords(jsonStr: string): SmartKeywords {
     try {
-        return JSON.parse(jsonStr) || {};
+        return (JSON.parse(jsonStr) as SmartKeywords) || {};
     } catch {
         return {};
     }

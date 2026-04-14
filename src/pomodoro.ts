@@ -26,7 +26,7 @@
  * 重启后 running 状态自动转为 paused，休息状态直接丢弃
  */
 
-import { Notice } from 'obsidian';
+import { Notice, Plugin } from 'obsidian';
 import { PomodoroSession, PomodoroState, PomodoroStats, PomodoroPauseRecord } from './types';
 
 /** MemosView 通过此接口监听番茄钟状态变化，驱动 UI 更新 */
@@ -50,7 +50,7 @@ export class PomodoroManager {
     private timerInterval: number | null = null;
     private listeners: Set<PomodoroEventListener> = new Set();
     /** 宿主插件实例，用于 saveData/loadData 持久化 */
-    private plugin: any;
+    private plugin: Plugin;
 
     private duration: number = 25;
     private shortBreakDuration: number = 5;
@@ -62,7 +62,7 @@ export class PomodoroManager {
     private consecutiveCounts: Map<string, number> = new Map();
 
     constructor(
-        plugin: any,
+        plugin: Plugin,
         duration: number = 25,
         soundEnabled: boolean = true,
         shortBreak: number = 5,
@@ -119,7 +119,7 @@ export class PomodoroManager {
         this.allSessions.push(session);
 
         this.startTimer();
-        this.save();
+        void this.save();
         this.notifyChange(session);
 
         new Notice(`🍅 番茄钟已启动 (${plannedMinutes}分钟)`);
@@ -150,7 +150,7 @@ export class PomodoroManager {
         }
         session.pauseHistory.push(pauseRecord);
 
-        this.save();
+        void this.save();
         this.notifyChange(session);
 
         new Notice('⏸ 番茄钟已暂停');
@@ -185,7 +185,7 @@ export class PomodoroManager {
         }
 
         session.state = 'running';
-        this.save();
+        void this.save();
 
         this.startTimer();
         this.notifyChange(session);
@@ -216,7 +216,7 @@ export class PomodoroManager {
                 this.allSessions.push(session);
             }
             this.sessions.delete(memoId);
-            this.save();
+            void this.save();
             this.notifyChange(session);
             this.checkAndStopTimer();
             new Notice('☕ 休息已结束');
@@ -237,7 +237,7 @@ export class PomodoroManager {
             if (actualSeconds < 60) {
                 this.sessions.delete(memoId);
                 this.allSessions = this.allSessions.filter(s => s.id !== session.id);
-                this.save();
+                void this.save();
                 this.notifyChange(session);
                 this.checkAndStopTimer();
                 new Notice('⏱ 专注不足 1 分钟，不计入番茄记录');
@@ -258,7 +258,7 @@ export class PomodoroManager {
             this.consecutiveCounts.delete(memoId);
         }
 
-        this.save();
+        void this.save();
         this.notifyChange(session);
         this.checkAndStopTimer();
 
@@ -290,7 +290,7 @@ export class PomodoroManager {
         }
 
         this.sessions.delete(memoId);
-        this.save();
+        void this.save();
 
         // 通知 UI 休息结束
         for (const listener of this.listeners) {
@@ -349,7 +349,7 @@ export class PomodoroManager {
             this.consecutiveCounts.set(newMemoId, count);
         }
 
-        this.save();
+        void this.save();
     }
 
     /** 获取汇总统计（今日/全部的番茄数、专注时长、休息时长） */
@@ -404,7 +404,7 @@ export class PomodoroManager {
                 break;
             }
         }
-        this.save();
+        void this.save();
         this.notifyDataChange();
     }
 
@@ -418,7 +418,7 @@ export class PomodoroManager {
                 this.sessions.delete(memoId);
             }
         }
-        this.save();
+        void this.save();
         this.notifyDataChange();
     }
 
@@ -430,7 +430,7 @@ export class PomodoroManager {
         this.sessions.clear();
         this.consecutiveCounts.clear();
         this.checkAndStopTimer();
-        this.save();
+        void this.save();
         this.notifyDataChange();
     }
 
@@ -438,7 +438,7 @@ export class PomodoroManager {
     private notifyDataChange(): void {
         for (const listener of this.listeners) {
             if (listener.onSessionChange) {
-                listener.onSessionChange(undefined as any);
+                listener.onSessionChange(undefined as unknown as PomodoroSession);
             }
         }
     }
@@ -472,8 +472,13 @@ export class PomodoroManager {
      * 重启后处理：running → paused（需用户手动继续），休息中 → 直接丢弃
      */
     async load(): Promise<void> {
+        interface SavedData {
+            allSessions?: PomodoroSession[];
+            sessions?: Array<[string, PomodoroSession]>;
+            consecutiveCounts?: Array<[string, number]>;
+        }
         try {
-            const data = await this.plugin.loadData();
+            const data = await this.plugin.loadData() as SavedData | null;
             if (data && data.allSessions) {
                 this.allSessions = data.allSessions;
                 for (const session of this.allSessions) {
@@ -483,7 +488,7 @@ export class PomodoroManager {
                 }
                 if (data.sessions) {
                     for (const [memoId, session] of data.sessions) {
-                        const s = session as PomodoroSession;
+                        const s = session;
                         if (s.state === 'running') {
                             s.state = 'paused';
                         }
@@ -500,7 +505,7 @@ export class PomodoroManager {
                 // 恢复连续计数
                 if (data.consecutiveCounts) {
                     for (const [memoId, count] of data.consecutiveCounts) {
-                        this.consecutiveCounts.set(memoId, count as number);
+                        this.consecutiveCounts.set(memoId, count);
                     }
                 }
             }
@@ -625,7 +630,7 @@ export class PomodoroManager {
 
         // 从活跃 sessions 中移除已完成的专注会话
         this.sessions.delete(memoId);
-        this.save();
+        void this.save();
 
         // 自动进入休息阶段
         this.startBreak(memoId, count);
@@ -670,7 +675,7 @@ export class PomodoroManager {
             }
         }
         this.notifyChange(breakSession);
-        this.save();
+        void this.save();
 
         if (isLongBreak) {
             new Notice(`🌿 第 ${completedCount} 个番茄完成！长休息 ${breakMinutes} 分钟`);
@@ -702,7 +707,7 @@ export class PomodoroManager {
         }
 
         this.sessions.delete(memoId);
-        this.save();
+        void this.save();
 
         for (const listener of this.listeners) {
             if (listener.onBreakEnd) {
@@ -779,7 +784,7 @@ export class PomodoroManager {
     }
 
     private generateId(): string {
-        return `pomodoro-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        return `pomodoro-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     }
 
     // ============ 提示音（Web Audio API） ============
@@ -787,7 +792,7 @@ export class PomodoroManager {
     /** 专注完成提示音：800Hz 正弦波，0.5 秒衰减 */
     private playNotificationSound(): void {
         try {
-            const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const audioContext = new (window.AudioContext || (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)();
             const oscillator = audioContext.createOscillator();
             const gainNode = audioContext.createGain();
 
@@ -813,7 +818,7 @@ export class PomodoroManager {
     /** 休息结束提示音：两声短促音（600Hz + 800Hz），提醒回来工作 */
     private playBreakEndSound(): void {
         try {
-            const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const audioContext = new (window.AudioContext || (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)();
 
             const playBeep = (startTime: number, freq: number) => {
                 const osc = audioContext.createOscillator();

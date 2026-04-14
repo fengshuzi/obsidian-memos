@@ -13,7 +13,7 @@
  * 通过 scheduleDebouncedRefresh 合并 300ms 内的多次事件为一次 refresh
  */
 
-import { Plugin, WorkspaceLeaf, addIcon, TFile } from 'obsidian';
+import { Plugin, addIcon, TFile } from 'obsidian';
 import { MemosPluginSettings, DEFAULT_SETTINGS, MEMOS_VIEW_TYPE, POMODORO_STATS_VIEW_TYPE } from './types';
 import { MemosStorage } from './storage';
 import { MemosView } from './MemosView';
@@ -32,8 +32,6 @@ export default class MemosPlugin extends Plugin {
     private pendingRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 
     async onload(): Promise<void> {
-        console.log('加载闪念笔记插件');
-
         // 加载设置
         await this.loadSettings();
 
@@ -68,7 +66,7 @@ export default class MemosPlugin extends Plugin {
 
         // 添加侧边栏按钮
         this.addRibbonIcon('lightbulb', '闪念笔记', () => {
-            this.activateView();
+            void this.activateView();
         });
 
         // 注册命令
@@ -116,13 +114,12 @@ export default class MemosPlugin extends Plugin {
         // 启动时打开闪念页面
         if (this.settings.openOnStartup) {
             this.app.workspace.onLayoutReady(() => {
-                this.activateView();
+                void this.activateView();
             });
         }
     }
 
     onunload(): void {
-        console.log('卸载闪念笔记插件');
         if (this.pendingRefreshTimer) {
             clearTimeout(this.pendingRefreshTimer);
         }
@@ -141,7 +138,7 @@ export default class MemosPlugin extends Plugin {
             this.pendingRefreshTimer = null;
             const view = this.getActiveMemosView();
             if (view && !view.shouldSkipAutoRefresh()) {
-                view.refresh();
+                void view.refresh();
             }
         }, 300);
     }
@@ -155,7 +152,7 @@ export default class MemosPlugin extends Plugin {
             id: 'open-memos-view',
             name: '打开闪念视图',
             callback: () => {
-                this.activateView();
+                void this.activateView();
             },
         });
 
@@ -163,7 +160,6 @@ export default class MemosPlugin extends Plugin {
         this.addCommand({
             id: 'new-memo',
             name: '新建闪念（弹窗）',
-            hotkeys: [{ modifiers: ['Mod', 'Shift'], key: 'm' }],
             callback: () => {
                 this.openInputModal();
             },
@@ -173,7 +169,6 @@ export default class MemosPlugin extends Plugin {
         this.addCommand({
             id: 'submit-memo',
             name: '发送闪念',
-            hotkeys: [{ modifiers: ['Mod'], key: 'Enter' }],
             callback: () => {
                 const view = this.getActiveMemosView();
                 if (view) {
@@ -199,7 +194,7 @@ export default class MemosPlugin extends Plugin {
             id: 'open-pomodoro-stats',
             name: '打开番茄钟统计',
             callback: () => {
-                this.activatePomodoroStats();
+                void this.activatePomodoroStats();
             },
         });
     }
@@ -223,7 +218,7 @@ export default class MemosPlugin extends Plugin {
         }
 
         if (leaf) {
-            workspace.revealLeaf(leaf);
+            void workspace.revealLeaf(leaf);
         }
     }
 
@@ -247,7 +242,7 @@ export default class MemosPlugin extends Plugin {
         }
 
         if (leaf) {
-            workspace.revealLeaf(leaf);
+            void workspace.revealLeaf(leaf);
         }
     }
 
@@ -265,7 +260,7 @@ export default class MemosPlugin extends Plugin {
                 // 刷新视图
                 const view = this.getActiveMemosView();
                 if (view) {
-                    view.refresh();
+                    void view.refresh();
                 }
             }
         );
@@ -290,7 +285,7 @@ export default class MemosPlugin extends Plugin {
      * 加载设置
      */
     async loadSettings(): Promise<void> {
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData() as Partial<MemosPluginSettings>);
     }
 
     /**

@@ -4,7 +4,7 @@
  */
 
 import { App, TFile, TFolder } from 'obsidian';
-import { MemoItem, MemosByDate, MemosPluginSettings, MEMO_PATTERN, parseQuickTags } from './types';
+import { MemoItem, MemosByDate, MemosPluginSettings, MEMO_PATTERN, parseQuickTags, TaskStatus } from './types';
 import {
     generateId,
     formatTime,
@@ -255,7 +255,9 @@ export class MemosStorage {
         // 首先尝试匹配任务复选框格式: - [ ] HH:mm 内容 或 - [x] HH:mm 内容
         const checkboxMatch = line.match(/^-\s*\[([ xX])\]\s*(\d{2}:\d{2})?\s*(.+)$/);
         if (checkboxMatch) {
-            const [, checkStatus, timeString, restContent] = checkboxMatch;
+            const checkStatus = checkboxMatch[1] ?? '';
+            const timeString = checkboxMatch[2];
+            const restContent = checkboxMatch[3] ?? '';
             const taskStatus: TaskStatus = (checkStatus === ' ') ? 'CHECKBOX_UNCHECKED' : 'CHECKBOX_CHECKED';
             
             // 提取标签
@@ -300,7 +302,9 @@ export class MemosStorage {
         // 尝试匹配任务关键词格式: - TODO HH:mm 内容 或 - DONE 内容
         const keywordMatch = line.match(/^-\s*(TODO|DONE|DOING|NOW|LATER|WAITING|CANCELLED)\s+(\d{2}:\d{2})?\s*(.+)$/i);
         if (keywordMatch) {
-            const [, keyword, timeString, restContent] = keywordMatch;
+            const keyword = keywordMatch[1] ?? '';
+            const timeString = keywordMatch[2];
+            const restContent = keywordMatch[3] ?? '';
             const taskStatus = keyword.toUpperCase() as TaskStatus;
             
             // 提取标签

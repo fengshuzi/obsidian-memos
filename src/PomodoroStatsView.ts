@@ -111,7 +111,7 @@ export class PomodoroStatsView extends ItemView {
                 text: f.label,
             });
             btn.addEventListener('click', () => {
-                this.filterState = f.value;
+                this.filterState = f.value as 'all' | 'completed' | 'cancelled';
                 this.selectedIds.clear();
                 this.renderContent();
             });
@@ -176,7 +176,7 @@ export class PomodoroStatsView extends ItemView {
         // 表头
         const header = listSection.createDiv({ cls: 'pomo-session-header' });
 
-        const selectAllCb = header.createEl('input', { type: 'checkbox' }) as HTMLInputElement;
+        const selectAllCb = header.createEl('input', { type: 'checkbox' });
         selectAllCb.checked = sessions.length > 0 && this.selectedIds.size === sessions.length;
         selectAllCb.addEventListener('change', () => {
             if (selectAllCb.checked) {
@@ -229,7 +229,7 @@ export class PomodoroStatsView extends ItemView {
         const row = parent.createDiv({ cls: `pomo-session-row${isBreak ? ' pomo-session-break' : ''}` });
 
         // 复选框
-        const cb = row.createEl('input', { type: 'checkbox' }) as HTMLInputElement;
+        const cb = row.createEl('input', { type: 'checkbox' });
         cb.checked = this.selectedIds.has(session.id);
         cb.addEventListener('change', () => {
             if (cb.checked) {

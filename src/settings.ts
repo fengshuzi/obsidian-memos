@@ -2,6 +2,7 @@
  * 闪念笔记插件设置页面
  */
 
+/* eslint-disable obsidianmd/ui/sentence-case */
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import type MemosPlugin from './main';
 
@@ -17,10 +18,10 @@ export class MemosSettingTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
 
-        containerEl.createEl('h2', { text: '闪念笔记设置' });
+        new Setting(containerEl).setName('闪念笔记设置').setHeading();
 
         // 存储设置
-        containerEl.createEl('h3', { text: '📁 存储' });
+        new Setting(containerEl).setName('📁 存储').setHeading();
 
         new Setting(containerEl)
             .setName('Journal 文件夹')
@@ -56,7 +57,7 @@ export class MemosSettingTab extends PluginSettingTab {
                 }));
 
         // 行为设置
-        containerEl.createEl('h3', { text: '⚙️ 行为' });
+        new Setting(containerEl).setName('⚙️ 行为').setHeading();
 
         new Setting(containerEl)
             .setName('显示时间戳')
@@ -101,7 +102,7 @@ export class MemosSettingTab extends PluginSettingTab {
                 }));
 
         // 任务时间追踪设置
-        containerEl.createEl('h3', { text: '⏱️ 任务时间追踪' });
+        new Setting(containerEl).setName('⏱️ 任务时间追踪').setHeading();
 
         new Setting(containerEl)
             .setName('启用任务时间追踪')
@@ -135,7 +136,7 @@ export class MemosSettingTab extends PluginSettingTab {
         trackingList.createEl('li', { text: '完成任务时自动计算并显示耗时' });
 
         // 任务列表标签设置
-        containerEl.createEl('h3', { text: '📋 任务列表标签' });
+        new Setting(containerEl).setName('📋 任务列表标签').setHeading();
 
         new Setting(containerEl)
             .setName('启用任务列表标签')
@@ -191,7 +192,7 @@ export class MemosSettingTab extends PluginSettingTab {
         taskListList.createEl('li', { text: 'DONE LIST：显示已完成任务（[x]、DONE、CANCELLED）' });
 
         // 标签设置
-        containerEl.createEl('h3', { text: '🏷️ 标签' });
+        new Setting(containerEl).setName('🏷️ 标签').setHeading();
 
         new Setting(containerEl)
             .setName('默认标签')
@@ -222,9 +223,7 @@ export class MemosSettingTab extends PluginSettingTab {
             .setName('智能关键词（记账识别）')
             .setDesc('内容包含数字+关键词时自动添加标签。JSON格式：{"标签": ["关键词1", "关键词2"]}。例如输入「午餐10元」自动加 #cy')
             .addTextArea(text => {
-                text.inputEl.style.width = '100%';
-                text.inputEl.style.height = '120px';
-                text.inputEl.style.fontFamily = 'monospace';
+                text.inputEl.setCssProps({ 'width': '100%', 'height': '120px', 'font-family': 'monospace' });
                 text
                     .setPlaceholder('{"cy": ["餐", "吃", "午餐"], "gw": ["购", "买"]}')
                     .setValue(this.plugin.settings.smartKeywords)
@@ -238,9 +237,7 @@ export class MemosSettingTab extends PluginSettingTab {
             .setName('习惯打卡关键词')
             .setDesc('内容包含关键词时自动添加标签（不需要数字）。JSON格式：{"标签": ["关键词1", "关键词2"]}。例如输入「深蹲50个」自动加 #sp')
             .addTextArea(text => {
-                text.inputEl.style.width = '100%';
-                text.inputEl.style.height = '120px';
-                text.inputEl.style.fontFamily = 'monospace';
+                text.inputEl.setCssProps({ 'width': '100%', 'height': '120px', 'font-family': 'monospace' });
                 text
                     .setPlaceholder('{"sp": ["运动", "深蹲", "哑铃"], "reading": ["阅读", "读书"]}')
                     .setValue(this.plugin.settings.habitKeywords)
@@ -251,7 +248,7 @@ export class MemosSettingTab extends PluginSettingTab {
             });
 
         // 界面设置
-        containerEl.createEl('h3', { text: '🎨 界面' });
+        new Setting(containerEl).setName('🎨 界面').setHeading();
 
         new Setting(containerEl)
             .setName('输入框占位文本')
@@ -265,7 +262,7 @@ export class MemosSettingTab extends PluginSettingTab {
                 }));
 
         // 番茄钟设置
-        containerEl.createEl('h3', { text: '🍅 番茄钟' });
+        new Setting(containerEl).setName('🍅 番茄钟').setHeading();
 
         new Setting(containerEl)
             .setName('启用番茄钟')
@@ -336,7 +333,7 @@ export class MemosSettingTab extends PluginSettingTab {
                 }));
 
         // 快捷键提示
-        containerEl.createEl('h3', { text: '⌨️ 快捷键' });
+        new Setting(containerEl).setName('⌨️ 快捷键').setHeading();
         
         const hotkeyInfo = containerEl.createDiv({ cls: 'setting-item' });
         hotkeyInfo.createEl('p', { 
@@ -361,7 +358,7 @@ export class MemosSettingTab extends PluginSettingTab {
         modalHotkeyList.createEl('li', { text: 'Escape：关闭弹窗' });
 
         // 关于
-        containerEl.createEl('h3', { text: '📖 关于' });
+        new Setting(containerEl).setName('📖 关于').setHeading();
         
         const aboutInfo = containerEl.createDiv({ cls: 'setting-item' });
         aboutInfo.createEl('p', { 
@@ -378,7 +375,7 @@ export class MemosSettingTab extends PluginSettingTab {
         });
 
         const donateSection = containerEl.createDiv({ cls: 'plugin-donate-section' });
-        donateSection.createEl('h3', { text: '☕ 请作者喝杯咖啡' });
+        new Setting(donateSection).setName('☕ 请作者喝杯咖啡').setHeading();
         donateSection.createEl('p', { text: '如果这个插件帮助了你，欢迎请作者喝杯咖啡 ☕', cls: 'plugin-donate-desc' });
         const imgWrap = donateSection.createDiv({ cls: 'plugin-donate-qr' });
         imgWrap.createEl('img', { attr: { src: this.plugin.app.vault.adapter.getResourcePath(`${this.plugin.manifest.dir}/assets/wechat-donate.jpg`), alt: '微信打赏', width: '160' } });

@@ -19,7 +19,7 @@
 import { ItemView, WorkspaceLeaf, Menu, Notice, MarkdownRenderer, TFile } from 'obsidian';
 import { MemosStorage } from './storage';
 import { MemoItem, MemosPluginSettings, MEMOS_VIEW_TYPE, parseQuickTags, QuickTag, parseSmartKeywords, matchSmartKeyword, matchHabitKeyword, TaskStatus, PomodoroSession } from './types';
-import { getFriendlyDateDisplay, debounce, truncateText } from './utils';
+import { getFriendlyDateDisplay, debounce } from './utils';
 import { MemoInputModal } from './InputModal';
 import { PomodoroManager } from './pomodoro';
 import type MemosPlugin from './main';
@@ -134,7 +134,7 @@ export class MemosView extends ItemView {
         title.setText('💡 闪念');
         
         const stats = headerLeft.createDiv({ cls: 'memos-stats' });
-        this.updateStats(stats);
+        void this.updateStats(stats);
 
         // 右侧：操作按钮
         const headerRight = header.createDiv({ cls: 'memos-header-right' });
@@ -144,6 +144,7 @@ export class MemosView extends ItemView {
             cls: 'memos-new-btn',
             attr: { 'aria-label': '新建闪念' }
         });
+        // eslint-disable-next-line @microsoft/sdl/no-inner-html
         newBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>';
         newBtn.addEventListener('click', () => {
             this.cancelEdit();
@@ -155,7 +156,9 @@ export class MemosView extends ItemView {
             cls: 'memos-refresh-btn',
             attr: { 'aria-label': '刷新' }
         });
+        // eslint-disable-next-line @microsoft/sdl/no-inner-html
         refreshBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>';
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
         refreshBtn.addEventListener('click', () => this.refresh());
 
         // 输入区域
@@ -177,7 +180,7 @@ export class MemosView extends ItemView {
         // 防抖搜索
         const debouncedSearch = debounce((query: string) => {
             this.currentFilter.search = query || undefined;
-            this.loadMemos();
+            void this.loadMemos();
         }, 300);
         
         searchInput.addEventListener('input', (e) => {
@@ -186,7 +189,7 @@ export class MemosView extends ItemView {
 
         // 标签筛选下拉
         const tagFilter = toolbar.createDiv({ cls: 'memos-tag-filter' });
-        this.createTagFilterDropdown(tagFilter);
+        void this.createTagFilterDropdown(tagFilter);
     }
 
     /**
@@ -212,9 +215,10 @@ export class MemosView extends ItemView {
             cls: 'memos-send-btn',
             attr: { 'aria-label': '发送 (⌘+Enter)' }
         });
+        // eslint-disable-next-line @microsoft/sdl/no-inner-html
         sendBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>';
         sendBtn.addEventListener('click', () => {
-            this.submitInlineInput();
+            void this.submitInlineInput();
         });
 
         // 自动调整高度（手机端单行不扩展，由 CSS 控制）
@@ -222,14 +226,14 @@ export class MemosView extends ItemView {
             if (!this.inputTextArea) return;
             const isMobile = window.matchMedia('(max-width: 768px)').matches;
             if (isMobile) return;
-            this.inputTextArea.style.height = 'auto';
-            this.inputTextArea.style.height = Math.min(this.inputTextArea.scrollHeight, 150) + 'px';
+            this.inputTextArea.setCssProps({ 'height': 'auto' });
+            this.inputTextArea.setCssProps({ 'height': Math.min(this.inputTextArea.scrollHeight, 150) + 'px' });
         });
 
         // 快捷键处理
         this.inputTextArea.onkeydown = (e: KeyboardEvent) => {
             // Escape 取消编辑
-            if ((e.key === 'Escape' || e.keyCode === 27) && this.editingMemo) {
+            if ((e.key === 'Escape' || e.key === 'Escape') && this.editingMemo) {
                 e.preventDefault();
                 this.cancelEdit();
                 return false;
@@ -253,6 +257,7 @@ export class MemosView extends ItemView {
                 cls: 'memos-quick-tag memos-quick-tag-all is-active',
                 text: '全部'
             });
+            // eslint-disable-next-line @typescript-eslint/no-misused-promises
             allBtn.addEventListener('click', async () => {
                 this.currentTag = '';
                 this.currentQuickTag = null;
@@ -275,6 +280,7 @@ export class MemosView extends ItemView {
                 });
                 tagBtn.setAttribute('data-keyword', tag.keyword);
 
+                // eslint-disable-next-line @typescript-eslint/no-misused-promises
                 tagBtn.addEventListener('click', async () => {
                     this.currentTag = tag.keyword;
                     this.currentQuickTag = tag;
@@ -297,6 +303,7 @@ export class MemosView extends ItemView {
                     cls: 'memos-quick-tag memos-task-list-tag',
                     text: this.settings.allTasksTagName
                 });
+                // eslint-disable-next-line @typescript-eslint/no-misused-promises
                 allTasksBtn.addEventListener('click', async () => {
                     this.currentTag = '';
                     this.currentQuickTag = null;
@@ -316,6 +323,7 @@ export class MemosView extends ItemView {
                     cls: 'memos-quick-tag memos-task-list-tag',
                     text: this.settings.todoListTagName
                 });
+                // eslint-disable-next-line @typescript-eslint/no-misused-promises
                 todoListBtn.addEventListener('click', async () => {
                     this.currentTag = '';
                     this.currentQuickTag = null;
@@ -335,6 +343,7 @@ export class MemosView extends ItemView {
                     cls: 'memos-quick-tag memos-task-list-tag',
                     text: this.settings.doneListTagName
                 });
+                // eslint-disable-next-line @typescript-eslint/no-misused-promises
                 doneListBtn.addEventListener('click', async () => {
                     this.currentTag = '';
                     this.currentQuickTag = null;
@@ -364,6 +373,7 @@ export class MemosView extends ItemView {
                     select.createEl('option', { value: tag.keyword, text: tag.label });
                 }
             }
+            // eslint-disable-next-line @typescript-eslint/no-misused-promises
             select.addEventListener('change', async () => {
                 const value = select.value;
                 if (!value) {
@@ -425,7 +435,6 @@ export class MemosView extends ItemView {
         // 3. 再检查快捷标签分组
         if (this.currentQuickTag && this.currentQuickTag.keywords.length > 0) {
             // 检查内容中是否已包含分组内的任意标签（包括刚添加的智能标签）
-            const allTagsToCheck = [...this.currentQuickTag.keywords, ...tags];
             const contentHasGroupTag = this.currentQuickTag.keywords.some(keyword => 
                 content.includes(`#${keyword}`) || tags.includes(keyword)
             );
@@ -463,7 +472,7 @@ export class MemosView extends ItemView {
                 // 清空输入框
                 if (this.inputTextArea) {
                     this.inputTextArea.value = '';
-                    this.inputTextArea.style.height = 'auto';
+                    this.inputTextArea.setCssProps({ 'height': 'auto' });
                 }
                 this.editingMemo = null;
                 this.updateInputAreaState();
@@ -484,8 +493,8 @@ export class MemosView extends ItemView {
         this.editingMemo = memo;
         if (this.inputTextArea) {
             this.inputTextArea.value = memo.content;
-            this.inputTextArea.style.height = 'auto';
-            this.inputTextArea.style.height = Math.min(this.inputTextArea.scrollHeight, 150) + 'px';
+            this.inputTextArea.setCssProps({ 'height': 'auto' });
+            this.inputTextArea.setCssProps({ 'height': Math.min(this.inputTextArea.scrollHeight, 150) + 'px' });
             this.inputTextArea.focus();
             // 光标移到末尾
             this.inputTextArea.selectionStart = this.inputTextArea.value.length;
@@ -517,7 +526,7 @@ export class MemosView extends ItemView {
         this.editingMemo = null;
         if (this.inputTextArea) {
             this.inputTextArea.value = '';
-            this.inputTextArea.style.height = 'auto';
+            this.inputTextArea.setCssProps({ 'height': 'auto' });
         }
         this.currentTag = '';
         this.currentQuickTag = null;
@@ -545,8 +554,9 @@ export class MemosView extends ItemView {
         if (this.editingMemo) {
             inputArea.addClass('is-editing');
             const hint = inputArea.createDiv({ cls: 'memos-edit-hint' });
-            hint.innerHTML = `<span>编辑中</span><button class="memos-cancel-edit">取消</button>`;
-            hint.querySelector('.memos-cancel-edit')?.addEventListener('click', () => {
+            hint.createEl('span', { text: '编辑中' });
+            const cancelBtn = hint.createEl('button', { text: '取消', cls: 'memos-cancel-edit' });
+            cancelBtn.addEventListener('click', () => {
                 this.cancelEdit();
             });
         } else {
@@ -575,7 +585,7 @@ export class MemosView extends ItemView {
         select.addEventListener('change', () => {
             this.currentFilter.tag = select.value || undefined;
             this.currentFilter.filterTags = undefined; // 下拉框只支持单标签筛选
-            this.loadMemos();
+            void this.loadMemos();
         });
     }
 
@@ -796,6 +806,7 @@ export class MemosView extends ItemView {
             
             // 如果启用时间追踪，点击复选框切换任务状态
             if (this.settings.enableTimeTracking) {
+                // eslint-disable-next-line @typescript-eslint/no-misused-promises
                 checkbox.addEventListener('click', async (e) => {
                     e.stopPropagation();
                     await this.toggleTaskStatus(memo);
@@ -817,7 +828,7 @@ export class MemosView extends ItemView {
             textContent += memo.content;
             
             // 渲染文本内容（支持 Markdown）
-            MarkdownRenderer.render(
+            void MarkdownRenderer.render(
                 this.app,
                 textContent,
                 textSpan,
@@ -838,6 +849,7 @@ export class MemosView extends ItemView {
             
             // 如果启用时间追踪，点击复选框切换任务状态
             if (this.settings.enableTimeTracking) {
+                // eslint-disable-next-line @typescript-eslint/no-misused-promises
                 checkbox.addEventListener('click', async (e) => {
                     e.stopPropagation();
                     await this.toggleTaskStatus(memo);
@@ -866,7 +878,7 @@ export class MemosView extends ItemView {
             }
             textContent += memo.content;
             
-            MarkdownRenderer.render(
+            void MarkdownRenderer.render(
                 this.app,
                 textContent,
                 textSpan,
@@ -885,7 +897,7 @@ export class MemosView extends ItemView {
             }
             displayContent += memo.content;
             
-            MarkdownRenderer.render(
+            void MarkdownRenderer.render(
                 this.app,
                 displayContent,
                 cardContent,
@@ -899,6 +911,7 @@ export class MemosView extends ItemView {
             cls: 'memos-card-more',
             attr: { 'aria-label': '更多操作' }
         });
+        // eslint-disable-next-line @microsoft/sdl/no-inner-html
         moreBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>';
         moreBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -912,7 +925,7 @@ export class MemosView extends ItemView {
 
         // 点击卡片跳转到源文件
         card.addEventListener('click', () => {
-            this.openMemoInFile(memo);
+            void this.openMemoInFile(memo);
         });
     }
 
@@ -982,7 +995,7 @@ export class MemosView extends ItemView {
                     if (wasTodo) {
                         // 使用稳定的 memoId：filePath-lineNumber
                         const stableMemoId = `${updatedMemo.filePath}-${updatedMemo.lineNumber}`;
-                        console.log('启动番茄钟，stableMemoId:', stableMemoId);
+                        console.debug('启动番茄钟，stableMemoId:', stableMemoId);
 
                         setTimeout(() => {
                             // 用切换前的原始内容，避免 DOING 行中包含 <!-- ts:... --> 注释
@@ -1006,7 +1019,7 @@ export class MemosView extends ItemView {
                             this.removeCardFromTodoList(updatedMemo);
                         }, 200);
                     } else if (session && (session.state === 'running' || session.state === 'paused')) {
-                        console.log('任务完成，停止番茄钟，stableMemoId:', stableMemoId);
+                        console.debug('任务完成，停止番茄钟，stableMemoId:', stableMemoId);
                         setTimeout(() => {
                             this.pomodoroManager.stop(session.id, true);
                             // 番茄钟处理完后再移除卡片
@@ -1074,6 +1087,7 @@ export class MemosView extends ItemView {
             checkbox.checked = newMemo.taskStatus === 'CHECKBOX_CHECKED';
             
             if (this.settings.enableTimeTracking) {
+                // eslint-disable-next-line @typescript-eslint/no-misused-promises
                 checkbox.addEventListener('click', async (e) => {
                     e.stopPropagation();
                     await this.toggleTaskStatus(newMemo);
@@ -1092,7 +1106,7 @@ export class MemosView extends ItemView {
             }
             textContent += newMemo.content;
             
-            MarkdownRenderer.render(
+            void MarkdownRenderer.render(
                 this.app,
                 textContent,
                 textSpan,
@@ -1111,6 +1125,7 @@ export class MemosView extends ItemView {
             checkbox.checked = newMemo.taskStatus === 'DONE' || newMemo.taskStatus === 'CANCELLED';
             
             if (this.settings.enableTimeTracking) {
+                // eslint-disable-next-line @typescript-eslint/no-misused-promises
                 checkbox.addEventListener('click', async (e) => {
                     e.stopPropagation();
                     await this.toggleTaskStatus(newMemo);
@@ -1136,7 +1151,7 @@ export class MemosView extends ItemView {
             }
             textContent += newMemo.content;
             
-            MarkdownRenderer.render(
+            void MarkdownRenderer.render(
                 this.app,
                 textContent,
                 textSpan,
@@ -1155,7 +1170,7 @@ export class MemosView extends ItemView {
             }
             displayContent += newMemo.content;
             
-            MarkdownRenderer.render(
+            void MarkdownRenderer.render(
                 this.app,
                 displayContent,
                 cardContent,
@@ -1169,6 +1184,7 @@ export class MemosView extends ItemView {
             cls: 'memos-card-more',
             attr: { 'aria-label': '更多操作' }
         });
+        // eslint-disable-next-line @microsoft/sdl/no-inner-html
         moreBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>';
         moreBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -1182,7 +1198,7 @@ export class MemosView extends ItemView {
 
         // 点击卡片跳转到源文件
         newCard.addEventListener('click', () => {
-            this.openMemoInFile(newMemo);
+            void this.openMemoInFile(newMemo);
         });
 
         // 替换旧卡片
@@ -1382,7 +1398,7 @@ export class MemosView extends ItemView {
             const [, , timeStr, content] = doneMatch;
             const taskText = content
                 .replace(/\s+\d+(秒|分钟|小时)$/, '')
-                .replace(/\s+[🍅🥔]+$/, '')
+                .replace(/\s+[🍅🥔]+$/u, '')
                 .trim();
             return timeStr ? `- ${timeStr} ${taskText}` : `- ${taskText}`;
         }
@@ -1430,7 +1446,7 @@ export class MemosView extends ItemView {
             item.setTitle('复制内容')
                 .setIcon('copy')
                 .onClick(() => {
-                    navigator.clipboard.writeText(memo.content);
+                    void navigator.clipboard.writeText(memo.content);
                     new Notice('已复制到剪贴板');
                 });
         });
@@ -1446,7 +1462,7 @@ export class MemosView extends ItemView {
                         const success = await this.storage.deleteMemo(memo);
                         if (success) {
                             new Notice('已删除');
-                            this.refresh();
+                            void this.refresh();
                         } else {
                             new Notice('删除失败');
                         }
@@ -1478,7 +1494,7 @@ export class MemosView extends ItemView {
      */
     private async openMemoInFile(memo: MemoItem): Promise<void> {
         const file = this.app.vault.getAbstractFileByPath(memo.filePath);
-        if (!file) return;
+        if (!(file instanceof TFile)) return;
 
         // 检查是否已有打开该文件的标签页
         const leaves = this.app.workspace.getLeavesOfType('markdown');
@@ -1493,7 +1509,7 @@ export class MemosView extends ItemView {
 
         // 没有找到已打开的标签页，打开新的
         const leaf = this.app.workspace.getLeaf(false);
-        await leaf.openFile(file as any);
+        await leaf.openFile(file);
     }
 
     /**
@@ -1502,7 +1518,7 @@ export class MemosView extends ItemView {
     private filterByTag(tag: string): void {
         this.currentFilter.tag = tag;
         this.currentFilter.filterTags = undefined; // 单标签筛选时清除多标签
-        this.loadMemos();
+        void this.loadMemos();
         
         // 更新下拉框选中状态
         const select = this.containerEl.querySelector('.memos-tag-select') as HTMLSelectElement;
@@ -1546,6 +1562,7 @@ export class MemosView extends ItemView {
         const empty = this.contentContainer.createDiv({ cls: 'memos-empty' });
         
         const icon = empty.createDiv({ cls: 'memos-empty-icon' });
+        // eslint-disable-next-line @microsoft/sdl/no-inner-html
         icon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>';
         
         const text = empty.createDiv({ cls: 'memos-empty-text' });
@@ -1574,6 +1591,7 @@ export class MemosView extends ItemView {
             this.app,
             this.storage,
             this.settings,
+            // eslint-disable-next-line @typescript-eslint/no-misused-promises
             () => this.refresh(),
             undefined,
             isTask
@@ -1601,7 +1619,7 @@ export class MemosView extends ItemView {
     submitFromCommand(): void {
         // 检查输入框是否有内容
         if (this.inputTextArea && this.inputTextArea.value.trim()) {
-            this.submitInlineInput();
+            void this.submitInlineInput();
         }
     }
 
@@ -1765,7 +1783,7 @@ export class MemosView extends ItemView {
                 const t = tomatoes.createSpan({ cls: 'memos-pomodoro-tomato', text: '🍅' });
                 t.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    this.plugin.activatePomodoroStats();
+                    void this.plugin.activatePomodoroStats();
                 });
             }
         }

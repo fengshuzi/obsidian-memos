@@ -4,7 +4,7 @@
  * 支持新增和编辑两种模式
  */
 
-import { App, Modal, Notice, Setting } from 'obsidian';
+import { App, Modal, Notice } from 'obsidian';
 import { MemosStorage } from './storage';
 import { MemoItem, MemosPluginSettings, parseQuickTags } from './types';
 import { formatTime } from './utils';
@@ -82,8 +82,8 @@ export class MemoInputModal extends Modal {
             // 自动调整高度
             setTimeout(() => {
                 if (this.textArea) {
-                    this.textArea.style.height = 'auto';
-                    this.textArea.style.height = Math.min(this.textArea.scrollHeight, 300) + 'px';
+                    this.textArea.setCssProps({ 'height': 'auto' });
+                    this.textArea.setCssProps({ 'height': Math.min(this.textArea.scrollHeight, 300) + 'px' });
                 }
             }, 10);
         }
@@ -91,22 +91,22 @@ export class MemoInputModal extends Modal {
         // 自动调整高度
         this.textArea.addEventListener('input', () => {
             if (this.textArea) {
-                this.textArea.style.height = 'auto';
-                this.textArea.style.height = Math.min(this.textArea.scrollHeight, 300) + 'px';
+                this.textArea.setCssProps({ 'height': 'auto' });
+                this.textArea.setCssProps({ 'height': Math.min(this.textArea.scrollHeight, 300) + 'px' });
             }
         });
 
         // 快捷键处理
         this.textArea.addEventListener('keydown', (e: KeyboardEvent) => {
-            // Cmd/Ctrl + Enter 提交
-            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                e.preventDefault();
-                this.submitMemo(false);
-            }
             // Cmd/Ctrl + Shift + Enter 提交并继续（仅新建模式）
-            else if (!this.isEditMode && (e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'Enter') {
+            if (!this.isEditMode && (e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'Enter') {
                 e.preventDefault();
-                this.submitMemo(true);
+                void this.submitMemo(true);
+            }
+            // Cmd/Ctrl + Enter 提交
+            else if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                e.preventDefault();
+                void this.submitMemo(false);
             }
         });
 
@@ -205,7 +205,7 @@ export class MemoInputModal extends Modal {
             cls: 'memos-btn memos-btn-submit'
         });
         submitBtn.addEventListener('click', () => {
-            this.submitMemo(this.isEditMode ? false : this.settings.keepOpenAfterSubmit);
+            void this.submitMemo(this.isEditMode ? false : this.settings.keepOpenAfterSubmit);
         });
 
         // 聚焦输入框，光标移到末尾
@@ -268,7 +268,7 @@ export class MemoInputModal extends Modal {
                     // 清空输入框，准备下一条（仅新建模式）
                     if (this.textArea) {
                         this.textArea.value = '';
-                        this.textArea.style.height = 'auto';
+                        this.textArea.setCssProps({ 'height': 'auto' });
                         this.textArea.focus();
                     }
                     if (this.tagInput) {
